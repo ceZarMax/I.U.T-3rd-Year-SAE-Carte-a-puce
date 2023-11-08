@@ -3,7 +3,7 @@
 #include <avr/eeprom.h>
 
 //------------------------------------------------
-// Programme "hello world" pour carte à puce
+// Programme "hello.c" pour carte à puce
 // 
 //------------------------------------------------
 
@@ -23,6 +23,19 @@ uint8_t nom[MAXI];
 uint8_t prenom[MAXI];
 uint8_t date[MAXI];
 
+//------------------------------------------------
+// Variables EEPROM
+// 
+//------------------------------------------------
+
+#define MAX_PERSO 32
+uint16_t ee_taille EEMEM=0;
+uint8_t ee_perso[MAX_PERSO] EEMEM;
+uint8_t ee_taille_prenom EEMEM;
+uint8_t ee_prenom[MAXI] EEMEM;
+
+//------------------------------------------------
+//------------------------------------------------
 
 // Procédure qui renvoie l'ATR
 void atr(uint8_t n, char* hist)
@@ -123,13 +136,6 @@ void sortir_data()
     }
   sw1=0x90;
 }
-
-
-#define MAX_PERSO 32
-uint16_t ee_taille EEMEM=0;
-uint8_t ee_perso[MAX_PERSO] EEMEM;
-uint8_t ee_taille_prenom EEMEM;
-uint8_t ee_prenom[MAXI] EEMEM;
 
 
 
@@ -362,7 +368,7 @@ for(;;)
                     break;
 
                 case 5:
-                    lire_perso();
+                    lire_perso(); // lire dans l'eeprom
                     break;
 
                 case 6: // 80 06 00 00 07 "Maxence"
