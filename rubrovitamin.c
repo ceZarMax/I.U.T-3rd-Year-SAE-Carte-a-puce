@@ -39,6 +39,12 @@ unsigned char ee_perso[MAX_PERSO] EEMEM;
 //------------------------------------------------
 //------------------------------------------------
 
+
+//------------------------------------------------
+// Fonctions de la carte
+// 
+//------------------------------------------------
+
 // Procédure qui renvoie l'ATR
 void atr(uint8_t n, char* hist)
 {
@@ -57,7 +63,6 @@ void atr(uint8_t n, char* hist)
       sendbytet0(*hist++);
     }
 }
-
 
 // émission de la version
 // t est la taille de la chaîne sv
