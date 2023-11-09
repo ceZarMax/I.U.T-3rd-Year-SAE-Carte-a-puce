@@ -1,5 +1,5 @@
 CREATE DATABASE IF NOT EXISTS purpledragon
-DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; a
 USE purpledragon;
 CREATE TABLE etudiant(
 etu_num INT AUTO_INCREMENT,
