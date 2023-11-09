@@ -25,7 +25,6 @@ uint8_t sw1, sw2;   // status word
 
 int taille;   // taille des données introduites -- est initialisé à 0 avant la boucle
 #define MAXI 128  // taille maxi des données lues
-uint8_t data[MAXI]; // données introduites
 uint8_t data_nom[MAXI];
 uint8_t data_prenom[MAXI];
 uint8_t data_birth[MAXI];
@@ -116,6 +115,7 @@ void intro_nom(){ // Fonction de personnalisation, données écrite dans l'EEPRO
 
 void lire_nom(){
     int i;
+    char buffer[MAX_PERSO];
     uint8_t taille;
     taille=eeprom_read_byte(&ee_taille_nom);
     if (p3!=taille){
@@ -124,8 +124,10 @@ void lire_nom(){
         return;
     }
     sendbytet0(ins);
+    eeprom_read_block(buffer, ee_nom, taille);
+
     for (i=0;i<p3;i++){
-        sendbytet0(eeprom_read_byte(data_nom+i));
+        sendbytet0(buffer[i]);
     }
     sw1=0x90;
 }
@@ -150,6 +152,7 @@ void intro_prenom(){ // Fonction de personnalisation, données écrite dans l'EE
 
 void lire_prenom(){
     int i;
+    char buffer[MAX_PERSO];
     uint8_t taille;
     taille=eeprom_read_byte(&ee_taille_prenom);
     if (p3!=taille){
@@ -158,8 +161,10 @@ void lire_prenom(){
         return;
     }
     sendbytet0(ins);
+    eeprom_read_block(buffer, ee_prenom, taille);
+
     for (i=0;i<p3;i++){
-        sendbytet0(eeprom_read_byte(data_prenom+i));
+        sendbytet0(buffer[i]);
     }
     sw1=0x90;
 }
@@ -184,6 +189,7 @@ void intro_birth(){ // Fonction de personnalisation, données écrite dans l'EEP
 
 void lire_birth(){
     int i;
+    char buffer[MAX_PERSO];
     uint8_t taille;
     taille=eeprom_read_byte(&ee_taille_birth);
     if (p3!=taille){
@@ -192,8 +198,10 @@ void lire_birth(){
         return;
     }
     sendbytet0(ins);
+    eeprom_read_block(buffer, ee_birth, taille);
+
     for (i=0;i<p3;i++){
-        sendbytet0(eeprom_read_byte(data_birth+i));
+        sendbytet0(buffer[i]);
     }
     sw1=0x90;
 }
