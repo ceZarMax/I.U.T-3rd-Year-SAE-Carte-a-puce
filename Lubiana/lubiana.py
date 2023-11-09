@@ -128,13 +128,16 @@ def print_birth():
         sw2 : 0x%02X |""" % (sw1,sw2)) # Si erreur ici lors de l'éxécutio c'est normal
     apdu[4] = sw2 # Met à jour le cinquième octet de l'instruction qui correspond à l'octet SW2
     data, sw1, sw2 = conn_reader.transmit(apdu) # On renvoie la commande et on récupère ses données
+    
+
     str = ""
     for e in data:
         str += chr(e)
+        birthdate_formatted = f"{str[:2]}/{str[2:4]}/{str[4:]}" # Afficher la date de naissance avec des /
     print ("""
         sw1 : 0x%02X | 
         sw2 : 0x%02X | 
-        Date de naissance : %s""" % (sw1,sw2,str))    
+        Date de naissance : %s""" % (sw1,sw2,birthdate_formatted))   
     return
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
