@@ -89,7 +89,7 @@ void version()
       sw1=0x90;
 }
 
-void intro_perso(){ // Fonction de personnalisation, données écrite dans l'EEPROM
+void intro_nom(){ // Fonction de personnalisation, données écrite dans l'EEPROM
     int i;
     unsigned char data[MAX_PERSO];
     // vérification de la taille
@@ -107,7 +107,75 @@ void intro_perso(){ // Fonction de personnalisation, données écrite dans l'EEP
     sw1=0x90;
 }
 
-void lire_perso(){
+void lire_nom(){
+    int i;
+    uint8_t taille;
+    taille=eeprom_read_byte(&ee_taille_perso);
+    if (p3!=taille){
+        sw1=0x6c; // P3 incorrect
+        sw2=taille;
+        return;
+    }
+    sendbytet0(ins);
+    for (i=0;i<p3;i++){
+        sendbytet0(eeprom_read_byte(data+i));
+    }
+    sw1=0x90;
+}
+
+void intro_prenom(){ // Fonction de personnalisation, données écrite dans l'EEPROM
+    int i;
+    unsigned char data[MAX_PERSO];
+    // vérification de la taille
+    if (p3>MAX_PERSO){
+        sw1=0x6c; // P3 incorrect
+        sw2=MAX_PERSO; // sw2 contient l'information de la taille correcte
+        return;
+    }
+    sendbytet0(ins); // acquitement
+    for(i=0;i<p3;i++){ // boucle d'envoi du message
+        data[i]=recbytet0();
+    }
+    eeprom_write_block(data,ee_perso,p3);
+    eeprom_write_byte(&ee_taille_perso,p3);
+    sw1=0x90;
+}
+
+void lire_prenom(){
+    int i;
+    uint8_t taille;
+    taille=eeprom_read_byte(&ee_taille_perso);
+    if (p3!=taille){
+        sw1=0x6c; // P3 incorrect
+        sw2=taille;
+        return;
+    }
+    sendbytet0(ins);
+    for (i=0;i<p3;i++){
+        sendbytet0(eeprom_read_byte(data+i));
+    }
+    sw1=0x90;
+}
+
+void intro_birth(){ // Fonction de personnalisation, données écrite dans l'EEPROM
+    int i;
+    unsigned char data[MAX_PERSO];
+    // vérification de la taille
+    if (p3>MAX_PERSO){
+        sw1=0x6c; // P3 incorrect
+        sw2=MAX_PERSO; // sw2 contient l'information de la taille correcte
+        return;
+    }
+    sendbytet0(ins); // acquitement
+    for(i=0;i<p3;i++){ // boucle d'envoi du message
+        data[i]=recbytet0();
+    }
+    eeprom_write_block(data,ee_perso,p3);
+    eeprom_write_byte(&ee_taille_perso,p3);
+    sw1=0x90;
+}
+
+void lire_birth(){
     int i;
     uint8_t taille;
     taille=eeprom_read_byte(&ee_taille_perso);
@@ -228,11 +296,27 @@ for(;;)
                     break;
 
                 case 1:
-                    intro_perso();
+                    intro_nom();
                     break;
 
                 case 2:
-                    lire_perso();
+                    lire_nom();
+                    break;
+
+                case 3:
+                    intro_prenom();
+                    break;
+
+                case 4:
+                    lire_prenom();
+                    break;
+
+                case 5:
+                    intro_birth();
+                    break;
+
+                case 6:
+                    lire_birth();
                     break;
 
                 default:
