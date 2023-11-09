@@ -6,10 +6,10 @@
 
 ## Planning Prévisionnel
 
-| Tâche               | Date de début | Date de fin | Responsable |
+| Tâche               | Date de début | Date de fin | Responsable | 
 |---------------------|---------------|-------------|-------------|
-| Planification       | 07/11/2023    | 07/11/2023  | [@Maxence](https://github.com/ceZarMax)  |
-| La carte à puce       | 07/11/2023    | 07/11/2023  | 07/11/2023  |
+| Planification       | 07/11/2023    | 07/11/2023  | [@Maxence](https://github.com/ceZarMax), Adrien  |
+| La carte à puce       | 07/11/2023    | 07/11/2023  | [@Maxence](https://github.com/ceZarMax), Quentin  |
 | Personnalisation       | 07/11/2023    | 08/11/2023  | [@Maxence](https://github.com/ceZarMax)  |
 | Base de données      | 07/11/2023    | 07/11/2023  | 07/11/2023  |
 | Logiciel de gestion       | 07/11/2023    | 07/11/2023  | 07/11/2023  |
