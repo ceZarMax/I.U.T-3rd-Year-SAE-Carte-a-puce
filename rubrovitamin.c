@@ -1,6 +1,8 @@
 #include <io.h>
 #include <inttypes.h>
-#include <avr/eeprom.h>
+#include <avr/eeprom.h> // EEPROM
+#include <avr/pgmspace.h> // MEMOIRE FLASH
+
 
 //------------------------------------------------
 // Programme "rubrovitamin" pour carte à puce
@@ -14,7 +16,7 @@ uint8_t recbytet0(void);
 
 // Définition de la version
 #define size_ver 4
-const char ver_str[size_ver] PROGMEM = "1.00";
+const char ver_str[size_ver] PROGMEM = "1.00"; // Tableau vers_str de 4 caractères qui stocke 1.00 dans la mémoire flash
 
 
 // variables globales en static ram
@@ -24,9 +26,6 @@ uint8_t sw1, sw2;   // status word
 int taille;   // taille des données introduites -- est initialisé à 0 avant la boucle
 #define MAXI 128  // taille maxi des données lues
 uint8_t data[MAXI]; // données introduites
-uint8_t nom[MAXI];
-uint8_t prenom[MAXI];
-uint8_t date[MAXI];
 
 //------------------------------------------------
 // Variables EEPROM
@@ -41,7 +40,7 @@ unsigned char ee_perso[MAX_PERSO] EEMEM;
 
 
 //------------------------------------------------
-// Fonctions de la carte
+// ATR
 // 
 //------------------------------------------------
 
@@ -64,6 +63,11 @@ void atr(uint8_t n, char* hist)
     }
 }
 
+//------------------------------------------------
+// Partie Classe de personnalisation
+// 
+//------------------------------------------------
+
 // émission de la version
 // t est la taille de la chaîne sv
 void version()
@@ -84,6 +88,102 @@ void version()
       }
       sw1=0x90;
 }
+
+void intro_perso(){ // Fonction de personnalisation, données écrite dans l'EEPROM
+    int i;
+    unsigned char data[MAX_PERSO];
+    // vérification de la taille
+    if (p3>MAX_PERSO){
+        sw1=0x6c; // P3 incorrect
+        sw2=MAX_PERSO; // sw2 contient l'information de la taille correcte
+        return;
+    }
+    sendbytet0(ins); // acquitement
+    for(i=0;i<p3;i++){ // boucle d'envoi du message
+        data[i]=recbytet0();
+    }
+    eeprom_write_block(data,ee_perso,p3);
+    eeprom_write_byte(&ee_taille_perso,p3);
+    sw1=0x90;
+}
+
+void lire_perso(){
+    int i;
+    uint8_t taille;
+    taille=eeprom_read_byte(&ee_taille_perso);
+    if (p3!=taille){
+        sw1=0x6c; // P3 incorrect
+        sw2=taille;
+        return;
+    }
+    sendbytet0(ins);
+    for (i=0;i<p3;i++){
+        sendbytet0(eeprom_read_byte(data+i));
+    }
+    sw1=0x90;
+}
+
+//------------------------------------------------
+// Partie Classe de gestion de paiement
+// 
+//------------------------------------------------
+
+uint16_t solde EEMEM = 0;  // Définit une variable "solde" stockée en mémoire EEPROM, initialisée à 0.
+
+void LectureSolde(){
+    if(p3 != 2){
+        sw1 = 0x6c;   // Si la taille des données attendues (p3) n'est pas de 2 octets, renvoie une erreur 0x6C avec le code d'erreur 2.
+        sw2 = 2;
+        return;      
+    }
+    sendbytet0(ins);  // Envoie un octet d'acquittement (ins) à la carte.
+
+    // Lecture du solde depuis la mémoire EEPROM.
+    uint16_t mot = eeprom_read_word(&solde);  // Lecture d'un mot de 16 bits (2 octets) depuis la mémoire EEPROM.
+
+    // Envoi des octets du solde en deux parties : poids fort (high byte) suivi du poids faible (low byte).
+    sendbytet0(mot >> 8);  // Envoie d'abord le bit de poids fort (8 bits de poids fort).
+    sendbytet0(mot);       // Puis envoie le bit de poids faible (8 bits de poids faible).
+
+    sw1 = 0x90;  // Indique le succès en définissant sw1 à 0x90.
+}
+
+void credit(){ // Créditer la carte lors d'un rechargement
+    if(p3 != 2){
+        sw1 = 0x6c ;
+        sw2 = 2;
+        return ;
+    }
+    sendbytet0(ins) ;
+    uint16_t ajout = ((uint16_t)recbytet0() << 8) + (uint16_t)recbytet0();
+    uint16_t solde_mot = eeprom_read_word(&solde) ;
+    uint16_t montant = ajout + solde_mot ; // On ajoute le montant
+    if(montant < ajout){ //il y a eu un debordement
+        sw1 = 0x61 ;
+        return ;
+    }
+    eeprom_write_word(&solde, montant) ;
+    sw1 = 0x90 ;
+}
+
+void Depenser(){
+    if(p3 != 2){
+        sw1 = 0x6c ;
+        sw2 = 2;
+        return ;
+    }
+    sendbytet0(ins) ;
+    uint16_t retrait = ((uint16_t)recbytet0()<<8) + (uint16_t)recbytet0() ;
+    uint16_t solde_mot = eeprom_read_word(&solde) ;
+    if(solde_mot < retrait){
+        sw1 = 0x61 ; // solde insuffisant
+        return;
+    }
+    uint16_t montant = solde_mot - retrait ; // On débite le montant
+    eeprom_write_word(&solde, montant) ;
+    sw1 = 0x90 ;
+}
+
 
 
 // Programme principal
@@ -109,7 +209,6 @@ int main(void)
 
   taille=0;
   sw2=0;    // pour éviter de le répéter dans toutes les commandes
-  // boucle de traitement des commandes
 // boucle de traitement des commandes
 for(;;)
 {
@@ -129,47 +228,30 @@ for(;;)
                     break;
 
                 case 1:
-                    intro_data();
-                    break;
-
-                case 2:
-                    lire_data();
-                    break;
-
-                case 3:
-                    sortir_data();
-                    break;
-
-                case 4:
                     intro_perso();
                     break;
 
-                case 5:
-                    lire_perso(); // lire dans l'eeprom
+                case 2:
+                    lire_perso();
                     break;
 
-                case 6: // 80 06 00 00 07 "Maxence"
-                    inserer_nom();
+                default:
+                    sw1 = 0x6d; // code erreur ins inconnu
+            }
+            break;
+
+        case 0x82: // Classe de gestion de paiements
+            switch (ins) {
+                case 1:
+                    LectureSolde();
                     break;
 
-                case 7: // Nouvelle commande pour insérer le prénom
-                    inserer_prenom();
+                case 2:
+                    credit(); // créditer au format héxadécimal, ex (1€) = 0x64 soit 64 
                     break;
 
-                case 8: // Nouvelle commande pour insérer la date de naissance
-                    inserer_date_naissance();
-                    break;
-
-                case 9: // Nouvelle commande pour lire les informations
-                    lire_nom();
-                    break;
-
-                case 10: 
-                    lire_prenom();
-                    break;
-
-                case 11:
-                    lire_date();
+                case 3:
+                    Depenser();
                     break;
 
                 default:
