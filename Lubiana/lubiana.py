@@ -183,7 +183,7 @@ def intro_nom():
     for e in nom:
         apdu.append(ord(e))
 
-    print(apdu)
+    print("Affichage de l'APDU :", apdu)
 
     try:
         data, sw1, sw2 = conn_reader.transmit(apdu)
@@ -206,7 +206,7 @@ def intro_prenom():
     for e in prenom:
         apdu.append(ord(e))
 
-    print(apdu)
+    print("Affichage de l'APDU :", apdu)
 
     try:
         data, sw1, sw2 = conn_reader.transmit(apdu)
@@ -230,7 +230,7 @@ def intro_birth():
     for e in birth:
         apdu.append(ord(e))
 
-    print(apdu)
+    print("Affichage de l'APDU :", apdu)
 
     birthdate_formatted = f"{birth[:2]}/{birth[2:4]}/{birth[4:]}"
 
