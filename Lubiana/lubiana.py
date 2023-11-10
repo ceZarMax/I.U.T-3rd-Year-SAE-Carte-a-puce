@@ -162,7 +162,7 @@ def print_solde():
     print("""
         sw1 : 0x%02X | 
         sw2 : 0x%02X | 
-        Solde de la carte : %.2f""" % (sw1, sw2, solde))
+        Solde de la carte : %.2f €""" % (sw1, sw2, solde))
     return
 
 
@@ -257,7 +257,7 @@ def intro_credit():
             credit_hex = apdu[-1]  # Récupère la dernière valeur de l'APDU (0x64 dans cet exemple)
             credit_decimal = int(credit_hex)/100.00  # Convertit la valeur hexadécimale en décimal
 
-            print(f"Succès !\nCrédit initial ajouté : {credit_decimal}€")
+            print(f"Succès !\nCrédit initial ajouté : {credit_decimal} €")
         else:
             print(f"Erreur : {sw1}")
     except scardexcp.CardConnectionException as e:

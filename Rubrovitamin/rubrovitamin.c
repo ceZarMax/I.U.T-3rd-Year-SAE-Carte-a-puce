@@ -267,6 +267,12 @@ void Depenser(){
     sw1 = 0x90 ;
 }
 
+void Reinit() {
+    uint16_t solde_initial = 0; // Montant initial du solde (0 euros)
+    eeprom_write_word(&solde, solde_initial);
+    sw1 = 0x90; // Succès
+}
+
 
 
 // Programme principal
@@ -351,6 +357,10 @@ for(;;)
 
                 case 3:
                     Depenser();
+                    break;
+
+                case 4:
+                    Reinit();
                     break;
 
                 default:
