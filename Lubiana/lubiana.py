@@ -139,6 +139,33 @@ def print_birth():
         sw2 : 0x%02X | 
         Date de naissance : %s""" % (sw1,sw2,birthdate_formatted))   
     return
+
+# Fonction pour imprimer le solde de la carte
+def print_solde():
+    # Définition d'une APDU pour obtenir le solde
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
+
+    try:
+        # Tentative de transmission de l'APDU à la carte à puce
+        data, sw1, sw2 = conn_reader.transmit(apdu)
+        # Affichage des codes SW1 et SW2 en cas de succès
+        print ("sw1 : 0x%02X | sw2 : 0x%02X" % (sw1, sw2))
+    except scardexcp.CardConnectionException as e:
+        # Gestion des erreurs de connexion avec la carte
+        print("Erreur : ", e)
+
+    # Calcul du solde à partir des données reçues
+    solde = (int(data[0]) * 100 + int(data[1])) / 100.00 # Les données sont interprétées comme deux octets représentant le solde en centimes. 
+    # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
+
+    # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
+    print("""
+        sw1 : 0x%02X | 
+        sw2 : 0x%02X | 
+        Solde de la carte : %.2f""" % (sw1, sw2, solde))
+    return
+
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -173,7 +200,7 @@ def intro_prenom():
     apdu = [0x81, 0x03, 0x00, 0x00]
 
     # Saisie du nom
-    prenom = input("Saisissez le Préom de l'élève : ")
+    prenom = input("Saisissez le Prénom de l'élève : ")
     length_prenom = len(prenom)
     apdu.append(length_prenom)
     for e in prenom:
@@ -218,6 +245,29 @@ def intro_birth():
         print("Erreur : ", e)
     return
 
+# Fonction pour ajouter du crédit initial (1€) à la carte
+def intro_credit():
+    # Définition d'une APDU pour ajouter du crédit initial (1€)
+    apdu = [0x82, 0x02, 0x00, 0x00, 0x02, 0x00, 0x64]
+
+    try:
+        data, sw1, sw2 = conn_reader.transmit(apdu)
+        print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
+        if sw1 == 0x90:
+            credit_hex = apdu[-1]  # Récupère la dernière valeur de l'APDU (0x64 dans cet exemple)
+            credit_decimal = int(credit_hex)/100.00  # Convertit la valeur hexadécimale en décimal
+
+            print(f"Succès !\nCrédit initial ajouté : {credit_decimal}€")
+        else:
+            print(f"Erreur : {sw1}")
+    except scardexcp.CardConnectionException as e:
+        print("Erreur : ", e)
+    return
+
+
+
+
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -253,6 +303,7 @@ def print_data():
     print_nom()
     print_prenom()
     print_birth()
+    print_solde()
 
 def assign_card():
     intro_nom()
@@ -295,6 +346,10 @@ def main():
         	print_data()
         elif cmd == 3:
         	assign_card()
+        elif cmd == 4:
+            intro_credit()
+        elif cmd == 5:
+            print_solde()
         elif cmd == 6:
             return
         else:

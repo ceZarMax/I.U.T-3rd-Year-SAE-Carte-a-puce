@@ -34,9 +34,9 @@ uint8_t data_birth[MAXI];
 // 
 //------------------------------------------------
 
-#define MAX_PERSO 32
-uint8_t ee_taille_nom EEMEM=0;
-unsigned char ee_nom[MAX_PERSO] EEMEM;
+#define MAX_PERSO 32 // Constante max de 32 OCTETS
+uint8_t ee_taille_nom EEMEM=0; // Variable stockée dans l'EEPROM, stocke la taille de la chaine de car de NOM
+unsigned char ee_nom[MAX_PERSO] EEMEM; // Tableau de caractères avec taille max 'MAX_PERSO(32octets)'. Stocké dans l'EEPROM. Stocke la chaine de car de nom
 uint8_t ee_taille_prenom EEMEM=0;
 unsigned char ee_prenom[MAX_PERSO] EEMEM;
 uint8_t ee_taille_birth EEMEM=0;
