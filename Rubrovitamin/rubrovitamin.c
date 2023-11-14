@@ -268,6 +268,12 @@ void Depenser(){
 }
 
 void Reinit() {
+
+    if(p3 != 2){
+        sw1 = 0x6c ;
+        sw2 = 2;
+        return ;
+    }
     uint16_t solde_initial = 0; // Montant initial du solde (0 euros)
     eeprom_write_word(&solde, solde_initial);
     sw1 = 0x90; // Succès
