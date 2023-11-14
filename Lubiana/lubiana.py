@@ -314,7 +314,7 @@ def print_hello_message():
  |______\__,_|_.__/|_|\__,_|_| |_|\__,_|                                                 
 
  -- Version 1.00 --
- -- Auteur : Maxence, Adrien, Quentin -- \n \n""")
+ -- Auteur : Maxence -- \n \n""")
 
 def print_data():
     print_nom()
