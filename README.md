@@ -8,13 +8,12 @@
 
 | Tâche               | Date de début | Date de fin | Responsable | 
 |---------------------|---------------|-------------|-------------|
-| Planification       | 07/11/2023    | 07/11/2023  | [@Maxence](https://github.com/ceZarMax), Adrien  |
-| La carte à puce       | 07/11/2023    | 07/11/2023  | [@Maxence](https://github.com/ceZarMax), Quentin  |
-| Personnalisation       | 07/11/2023    | 08/11/2023  | [@Maxence](https://github.com/ceZarMax)  |
-| Base de données      | 07/11/2023    | 07/11/2023  | 07/11/2023  |
-| Logiciel de gestion       | 07/11/2023    | 07/11/2023  | 07/11/2023  |
-| Application de gestion sur Web       | 07/11/2023    | 07/11/2023  | 07/11/2023  |
-| Borne de recharge       | 07/11/2023    | 07/11/2023  | 07/11/2023  |
-| Les vulnérabilités       | 07/11/2023    | 07/11/2023  | 07/11/2023  |
-
-TEST COMMIT SUR UNE BRANCHE PARTICULIERE
+| Planification       | 07/11/2023    | 08/11/2023  | Maxence, Adrien, Sohayb  |
+| La carte à puce       | 07/11/2023    | 10/11/2023  | Maxence  |
+| Personnalisation       | 07/11/2023    | 13/11/2023  | Maxence  |
+| Base de données      | 07/11/2023    | 07/11/2023  | Adrien  |
+| Logiciel de gestion       | 07/11/2023    | 07/11/2023  | Quentin  |
+| Application de gestion sur Web       | ../11/2023    | ../11/2023  | PAS DEFINI  |
+| Borne de recharge       | 13/11/2023    | 07/11/2023  | Adrien, Sohayb  |
+| Machine à café       | 14/11/2023    | ../11/2023  | Maxence  |
+| Les vulnérabilités       | 07/11/2023    | 07/11/2023  | Quentin, Sohayb, Adrien, Maxence  |
