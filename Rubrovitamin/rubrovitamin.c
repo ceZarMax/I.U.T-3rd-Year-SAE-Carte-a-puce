@@ -372,7 +372,7 @@ for(;;)
         case 0x81: // Classe de personnalisation
             switch (ins) {
                 case 0:
-                    version(4, "1.00");
+                    version(4, "2.00");
                     break;
 
                 case 1:
