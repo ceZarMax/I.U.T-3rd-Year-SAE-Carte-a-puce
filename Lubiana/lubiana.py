@@ -148,14 +148,17 @@ def print_etu():
         sw2 : 0x%02X |""" % (sw1,sw2)) # Si erreur ici lors de l'éxécutio c'est normal
     apdu[4] = sw2 # Met à jour le cinquième octet de l'instruction qui correspond à l'octet SW2
     data, sw1, sw2 = conn_reader.transmit(apdu) # On renvoie la commande et on récupère ses données
+    
+
     str = ""
     for e in data:
         str += chr(e)
     print ("""
         sw1 : 0x%02X | 
         sw2 : 0x%02X | 
-        Numéro étudiant : %s""" % (sw1,sw2,str))    
+        Numéro étudiant : %s""" % (sw1,sw2,str))   
     return
+
 
 # Fonction pour imprimer le solde de la carte
 def print_solde():
@@ -262,14 +265,14 @@ def intro_birth():
         print("Erreur : ", e)
     return
 
-def intro_num():
+def intro_etu():
     apdu = [0x81, 0x07, 0x00, 0x00]
 
-    # Saisie du numéro étudiant
-    numero_etu = input("Saisissez le Numéro étudiant de l'élève (999 MAX) : ")
-    length_etu = len(numero_etu)
-    apdu.append(length_etu)
-    for e in numero_etu:
+    # Saisie du nom
+    num_etu = input("Saisissez le numéro étudiant (MAX : 999) : ")
+    length_num_etu = len(num_etu)
+    apdu.append(length_num_etu)
+    for e in num_etu:
         apdu.append(ord(e))
 
     print("Affichage de l'APDU :", apdu)
@@ -278,12 +281,13 @@ def intro_num():
         data, sw1, sw2 = conn_reader.transmit(apdu)
         print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
         if sw1 == 0x90:
-            print(f"Succès !\n Numéro étudiant de l'élève : {numero_etu}")
+            print(f"Succès !\nNuméro étudiant : {num_etu}")
         else:
-            print(f"Erreur, éviter les charactères : {sw1}")
+            print(f"Erreur : {sw1}")
     except scardexcp.CardConnectionException as e:
         print("Erreur : ", e)
     return
+
 
 # Fonction pour ajouter du crédit initial (1€) à la carte
 def intro_credit():
@@ -364,7 +368,7 @@ def print_data():
     print_solde()
 
 def assign_card():
-    intro_num()
+    intro_etu()
     intro_nom()
     intro_prenom()
     intro_birth()
