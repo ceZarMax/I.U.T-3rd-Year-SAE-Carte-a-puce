@@ -16,7 +16,7 @@ uint8_t recbytet0(void);
 
 // Définition de la version
 #define size_ver 4
-const char ver_str[size_ver] PROGMEM = "1.00"; // Tableau vers_str de 4 caractères qui stocke 1.00 dans la mémoire flash
+const char ver_str[size_ver] PROGMEM = "2.00"; // Tableau vers_str de 4 caractères qui stocke 1.00 dans la mémoire flash
 
 
 // variables globales en static ram
@@ -28,6 +28,7 @@ int taille;   // taille des données introduites -- est initialisé à 0 avant l
 uint8_t data_nom[MAXI];
 uint8_t data_prenom[MAXI];
 uint8_t data_birth[MAXI];
+uint8_t data_num[MAXI];
 
 //------------------------------------------------
 // Variables EEPROM
@@ -40,7 +41,11 @@ unsigned char ee_nom[MAX_PERSO] EEMEM; // Tableau de caractères avec taille max
 uint8_t ee_taille_prenom EEMEM=0;
 unsigned char ee_prenom[MAX_PERSO] EEMEM;
 uint8_t ee_taille_birth EEMEM=0;
-unsigned char ee_birth[MAX_PERSO] EEMEM;
+unsigned int ee_birth[MAX_PERSO] EEMEM;
+
+#define MAX_NUM_DIGITS 3 // 3 Octets max soit 999 étudiants max
+uint8_t ee_taille_num EEMEM=0;
+unsigned int ee_num[MAX_PERSO] EEMEM;
 //------------------------------------------------
 //------------------------------------------------
 
@@ -171,7 +176,7 @@ void lire_prenom(){
 
 void intro_birth(){ // Fonction de personnalisation, données écrite dans l'EEPROM
     int i;
-    unsigned char data_birth[MAX_PERSO];
+    unsigned int data_birth[MAX_PERSO];
     // vérification de la taille
     if (p3>MAX_PERSO){
         sw1=0x6c; // P3 incorrect
@@ -189,7 +194,7 @@ void intro_birth(){ // Fonction de personnalisation, données écrite dans l'EEP
 
 void lire_birth(){
     int i;
-    char buffer[MAX_PERSO];
+    int buffer[MAX_PERSO];
     uint8_t taille;
     taille=eeprom_read_byte(&ee_taille_birth);
     if (p3!=taille){
@@ -199,6 +204,54 @@ void lire_birth(){
     }
     sendbytet0(ins);
     eeprom_read_block(buffer, ee_birth, taille);
+
+    for (i=0;i<p3;i++){
+        sendbytet0(buffer[i]);
+    }
+    sw1=0x90;
+}
+
+void intro_num() {
+    int i;
+    int data_num[MAX_NUM_DIGITS];
+
+    // Vérification de la taille
+    if (p3 > MAX_NUM_DIGITS) {
+        sw1 = 0x6c;  // P3 incorrect
+        sw2 = MAX_NUM_DIGITS;  // sw2 contient l'information de la taille correcte
+        return;
+    }
+
+    sendbytet0(ins);  // Acquittement
+    for (i = 0; i < p3; i++) {
+        char digit = recbytet0();
+        if (digit < '0' || digit > '9') {
+            // Si le caractère n'est pas un chiffre, renvoyer une erreur
+            sw1 = 0x6a;  // Erreur de données incorrectes
+            sw2 = 0x80;  // Caractère non autorisé
+            return;
+        }
+        data_num[i] = digit - '0'; // Convertir un caractère ASCII en sa valeur entière
+    }
+
+    eeprom_write_block(data_num, ee_num, p3 * sizeof(int));
+    eeprom_write_byte(&ee_taille_num, p3 * sizeof(int));
+    sw1 = 0x90;
+}
+
+
+void lire_num(){
+    int i;
+    int buffer[MAX_NUM_DIGITS];
+    uint8_t taille;
+    taille=eeprom_read_byte(&ee_taille_num);
+    if (p3!=taille){
+        sw1=0x6c; // P3 incorrect
+        sw2=taille;
+        return;
+    }
+    sendbytet0(ins);
+    eeprom_read_block(buffer, ee_num, taille);
 
     for (i=0;i<p3;i++){
         sendbytet0(buffer[i]);
@@ -344,6 +397,14 @@ for(;;)
 
                 case 6:
                     lire_birth();
+                    break;
+
+                case 7:
+                    intro_num();
+                    break;
+
+                case 8:
+                    lire_num();
                     break;
 
                 default:

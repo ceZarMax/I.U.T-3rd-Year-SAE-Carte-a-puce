@@ -313,7 +313,7 @@ def print_hello_message():
  | |___| |_| | |_) | | (_| | | | | (_| |                                                 
  |______\__,_|_.__/|_|\__,_|_| |_|\__,_|                                                 
 
- -- Version 1.00 --
+ -- Version 2.00 --
  -- Auteur : Maxence -- \n \n""")
 
 def print_data():
