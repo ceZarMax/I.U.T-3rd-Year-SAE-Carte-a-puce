@@ -1,17 +1,19 @@
 import mysql.connector
+from datetime import datetime
 cnx = mysql.connector.connect(user='root',
 password='root',
 host='localhost',
 database='purpledragon')
 
+
 def print_hello_message():
 	print ("-----------------------------------")
-	print ("-- Logiciel de gestion : Rodlika --")
+	print ("-- Logiciel de gestion : Rodelika --")
 	print ("-----------------------------------")
 	
 def print_menu():
 	print (" 1 - Afficher la liste des étudiants ")
-	print (" 2 - Afficher le sold des étudiants ")
+	print (" 2 - Afficher le solde des étudiants ")
 	print (" 3 - Saisir un nouvel étudiant ")
 	print (" 4 - Attribuer un bonus ")
 	print (" 5 - Quitter")
@@ -32,7 +34,6 @@ def get_list_student_with_sold():
 	row = cursor.fetchone()
 	while row is not None:
 		print(row)
-		row = cursor.fetchone()
 		
 def new_student():
 	nom = input("Nom Etudiant : ")
@@ -42,34 +43,63 @@ def new_student():
 	cursor = cnx.cursor()
 	cursor.execute(sql, val)
 	cnx.commit()
+	num = cursor.lastrowid
+	sql2 = """INSERT INTO compte(etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES(%s, %s, %s, %s, %s);"""
+	current_datetime = datetime.now()
+	date = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+	val = (num, date, 1.00, "Initialisation", "Bonus")
+	cursor = cnx.cursor()
+	cursor.execute(sql2, val)
+	cnx.commit()
 	
 def add_bonus():
 	num = input("Num Etudiant : ")
 	com = input("Commentaire : ")
-	# compléter le code
+	sql = """INSERT INTO compte(etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES(%s, %s, %s, %s, %s);"""
+	current_datetime = datetime.now()
+	date = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+	val = (num, date, 1.00, com, "Bonus")
+	cursor = cnx.cursor()
+	cursor.execute(sql, val)
+	cnx.commit()
 	print ("Bonus + 1.00 euros")
 	
 def main():
 	n = 1
 	print_hello_message()
 	while(n != 0):
-		rint_menu()
+		print_menu()
 		menu = input()
 		match menu:
 			case "1":
-				print("Test_1")
+				get_list_student()
+				print(" 1 - Retour au menu ")
+				print(" 2 - Quitter le programme ")
+				submenu = input()
+				if (submenu == "2"):
+					break
 			case "2":
-				print("Test_2")
-				break
+				get_list_student_with_sold()
+				print(" 1 - Retour au menu ")
+				print(" 2 - Quitter le programme ")
+				submenu = input()
+				if (submenu == "2"):
+					break
 			case "3":
-				print("Test_3")
-				break
+				new_student()
+				print(" 1 - Retour au menu ")
+				print(" 2 - Quitter le programme ")
+				submenu = input()
+				if (submenu == "2"):
+					break
 			case "4":
-				print("Test_4")
-				break
+				add_bonus()
+				print(" 1 - Retour au menu ")
+				print(" 2 - Quitter le programme ")
+				submenu = input()
+				if (submenu == "2"):
+					break
 			case "5":
-				print("Test_5")
-				n = 0
 				break
 			case _:
 				print("ERREUR : Entrée Invalide")
