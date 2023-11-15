@@ -1,0 +1,94 @@
+import mysql.connector
+
+# Assurez-vous de remplacer les valeurs de connexion par les vôtres
+cnx = mysql.connector.connect(user='root',
+                              password='root',
+                              host='localhost',
+                              database='purpledragon')
+
+def print_hello_message():
+    print("-------------------------------------------------")
+    print("-- Logiciel embarqué sur la borne de recharge --")
+    print("-------------------------------------------------")
+
+def print_menu():
+    print("1 - Afficher mes informations")
+    print("2 - Consulter mes bonus")
+    print("3 - Transférer mes bonus sur ma carte")
+    print("4 - Consulter le crédit disponible sur ma carte")
+    print("5 - Recharger avec ma carte bancaire")
+    print("6 - Quitter")
+
+def afficher_informations(etu_num):
+    sql = "SELECT * FROM Etudiant WHERE etu_num = %s;"
+    val = (etu_num,)
+    cursor = cnx.cursor()
+    cursor.execute(sql, val)
+    row = cursor.fetchone()
+    if row:
+        print(row)
+    else:
+        print("Aucun étudiant trouvé avec ce numéro.")
+
+def consulter_bonus(etu_num):
+    sql = "SELECT * FROM Compte WHERE etu_num = %s AND type_opeartion = 'Bonus';"
+    val = (etu_num,)
+    cursor = cnx.cursor()
+    cursor.execute(sql, val)
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row)
+
+def transferer_bonus(etu_num):
+    sql_select = "SELECT * FROM Compte WHERE etu_num = %s AND type_opeartion = 'Bonus';"
+    sql_update = "UPDATE compte SET type_opeartion = 'Bonus transféré' WHERE etu_num = %s AND type_opeartion = 'Bonus';"
+    val = (etu_num,)
+    cursor = cnx.cursor()
+    cursor.execute(sql_select, val)
+    bonuses = cursor.fetchall()
+    if bonuses:
+        cursor.execute(sql_update, val)
+        cnx.commit()
+        print("Bonus transférés avec succès.")
+    else:
+        print("Aucun bonus à transférer.")
+
+def consulter_credit(etu_num):
+    sql = "SELECT etu_num, SUM(opr_montant) as credit FROM compte WHERE etu_num = %s GROUP BY etu_num;"
+    val = (etu_num,)
+    cursor = cnx.cursor()
+    cursor.execute(sql, val)
+    credit = cursor.fetchone()
+    if credit:
+        print(f"Crédit disponible: {credit[1]}")
+    else:
+        print("Aucune information de crédit disponible.")
+
+def recharger_credit():
+    # Puisque le processus de recharge est fictif, nous simulons simplement une transaction réussie.
+    print("Votre carte a été rechargée avec succès.")
+
+def main():
+    print_hello_message()
+    etu_num = input("Veuillez entrer votre numéro étudiant pour commencer: ")  # Simule la lecture de la carte à puce
+    while True:
+        print_menu()
+        choice = input("Choix : ")
+        if choice == '1':
+            afficher_informations(etu_num)
+        elif choice == '2':
+            consulter_bonus(etu_num)
+        elif choice == '3':
+            transferer_bonus(etu_num)
+        elif choice == '4':
+            consulter_credit(etu_num)
+        elif choice == '5':
+            recharger_credit()
+        elif choice == '6':
+            print("Merci d'avoir utilisé le logiciel Berlicum. À bientôt !")
+            break
+        else:
+            print("Choix non valide, veuillez réessayer.")
+
+if __name__ == "__main__":
+    main()
