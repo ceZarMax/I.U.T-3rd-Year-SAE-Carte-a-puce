@@ -1,3 +1,5 @@
+#RODELIKA, logiciel de gestion de la BDD
+
 import mysql.connector
 from datetime import datetime
 cnx = mysql.connector.connect(user='root',
