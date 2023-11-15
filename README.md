@@ -6,6 +6,9 @@
 
 ## Planning Prévisionnel
 
+***Planning TRELLO :*** [ICI](https://trello.com/invite/b/fEoSD80b/ATTIa302680ad224b3e02839b2f521fa3e953BDD153F/sae-assembleur)
+
+
 | Tâche               | Date de début | Date de fin | Responsable | 
 |---------------------|---------------|-------------|-------------|
 | Planification       | 07/11/2023    | 08/11/2023  | Maxence, Adrien, Sohayb  |
