@@ -85,8 +85,6 @@ def print_solde():
     try:
         # Tentative de transmission de l'APDU à la carte à puce
         data, sw1, sw2 = conn_reader.transmit(apdu)
-        # Affichage des codes SW1 et SW2 en cas de succès
-        print ("sw1 : 0x%02X | sw2 : 0x%02X" % (sw1, sw2))
     except scardexcp.CardConnectionException as e:
         # Gestion des erreurs de connexion avec la carte
         print("Erreur : ", e)
@@ -96,11 +94,8 @@ def print_solde():
     # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
 
     # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
-    print("""
-        sw1 : 0x%02X | 
-        sw2 : 0x%02X | 
-        Solde de la carte : %.2f €""" % (sw1, sw2, solde))
-    return
+    print("""\n
+        Solde de la carte : %.2f €""" % (solde))
 
 def print_nom():
     apdu = [0x81, 0x02, 0x00, 0x00, 0x00]  # Instruction à transmettre à la carte
@@ -130,7 +125,7 @@ def enregistrer_transaction(montant, libelle, type_operation):
 
     try:
         connection = mysql.connector.connect(
-            host='localhost',  # Correction de l'adresse du serveur MySQL
+            host='localhost',
             user='root',
             password='root',
             database='purpledragon'
@@ -145,7 +140,7 @@ def enregistrer_transaction(montant, libelle, type_operation):
 
         if result:
             etu_num = result[0]
-
+            
             # Insérer la transaction dans la table "compte"
             insert_query = "INSERT INTO compte (etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES (%s, %s, %s, %s, %s)"
             cursor.execute(insert_query, (etu_num, datetime.now(), montant, libelle, type_operation))
@@ -153,6 +148,12 @@ def enregistrer_transaction(montant, libelle, type_operation):
             # Valider la transaction dans la base de données
             connection.commit()
             print("Transaction enregistrée dans la base de données.")
+
+            # Mettre à jour les statistiques de la boisson dans la table "boissons"
+            update_boisson_query = "UPDATE boissons SET nombres_ventes = nombres_ventes + 1, montant_total = montant_total + %s WHERE boisson_nom = %s"
+            cursor.execute(update_boisson_query, (montant, libelle))
+            connection.commit()
+            print("Statistiques de vente mises à jour.")
         else:
             print("Étudiant non trouvé dans la base de données.")
 
@@ -182,24 +183,20 @@ def enregistrer_transaction(montant, libelle, type_operation):
 
 # Fonction pour débiter la carte et enregistrer la transaction
 def debiter_carte(montant, libelle, type_operation):
-    nom = print_nom()
-    prenom = print_prenom()
 
     apdu = [0x82, 0x03, 0x00, 0x00, 0x02, 0x00, int(montant * 100)]  # Convertir le montant en centimes
 
     try:
         data, sw1, sw2 = conn_reader.transmit(apdu)
         if sw1 == 0x90:
-            # Enregistrez la transaction dans la base de données
+            # Appel de la fonction pour enregistrer la transaction dans la base de données
             enregistrer_transaction(montant, libelle, type_operation)
             
-            print(f"Préparation de la boisson ({libelle}) en cours...")
+            print(f"Préparation du {libelle} en cours...")
             # Barre de chargement
             for i in range(1, 11):
                 print("\rChargement en cours : [{}{}] {}%".format("#" * i, " " * (10 - i), i * 10), end="")
                 time.sleep(0.5)
-
-            print("\nTransaction enregistrée dans la base de données.")
             print("""\n
                  ______                                 _                                      _                _ 
                 (____  \                               | |                      _         _   (_)              | |
@@ -211,10 +208,11 @@ def debiter_carte(montant, libelle, type_operation):
                 """)
             print_solde()
         else:
-            print(f"Erreur, plus d'argent sur la carte : {sw1}")
+            print(f"\nERREUR : pas assez d'argent sur la carte")
+            print(print_solde())
     except scardexcp.CardConnectionException as e:
         print("Erreur : ", e)
-    return
+    
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -275,7 +273,7 @@ def main():
             montant = 0.20 if cmd == 1 or cmd == 6 else 0.30 if cmd == 2 or cmd == 5 else 0.40
             libelle = "Café" if cmd == 1 else "Café long" if cmd == 2 else "Cappuccino" if cmd == 3 else "Café BIO" if cmd == 4 else "Chocolat chaud" if cmd == 5 else "Thé"
             type_operation = "Dépense"
-            enregistrer_transaction(montant, libelle, type_operation)
+            debiter_carte(montant, libelle, type_operation)
         elif cmd == 7:
             break  # Utilisez 'break' pour sortir de la boucle
         else:
