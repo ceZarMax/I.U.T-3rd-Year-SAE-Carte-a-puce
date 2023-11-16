@@ -19,7 +19,7 @@ def print_menu():
     print("2 - Consulter mes bonus")
     print("3 - Transférer mes bonus sur ma carte")
     print("4 - Consulter le crédit disponible sur ma carte")
-    print("5 - Recharger avec ma carte bancaire")
+    print("5 - Recharger ma carte")
     print("6 - Quitter")
 
 def afficher_informations(etu_num):
@@ -34,7 +34,7 @@ def afficher_informations(etu_num):
         print("Aucun étudiant trouvé avec ce numéro.")
 
 def consulter_bonus(etu_num):
-    sql = "SELECT * FROM Compte WHERE etu_num = %s AND type_opeartion = 'Bonus';"
+    sql = "SELECT * FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
     val = (etu_num,)
     cursor = cnx.cursor()
     cursor.execute(sql, val)
@@ -43,8 +43,8 @@ def consulter_bonus(etu_num):
         print(row)
 
 def transferer_bonus(etu_num):
-    sql_select = "SELECT * FROM Compte WHERE etu_num = %s AND type_opeartion = 'Bonus';"
-    sql_update = "UPDATE compte SET type_opeartion = 'Bonus transféré' WHERE etu_num = %s AND type_opeartion = 'Bonus';"
+    sql_select = "SELECT * FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
+    sql_update = "UPDATE compte SET type_operation = 'Bonus transféré' WHERE etu_num = %s AND type_operation = 'Bonus';"
     val = (etu_num,)
     cursor = cnx.cursor()
     cursor.execute(sql_select, val)
@@ -72,9 +72,6 @@ def consulter_credit():
     except Exception as e:
         print(f"Erreur lors de la communication avec la carte: {e}")
 
-    else:
-        print("Aucune information de crédit disponible.")
-
 def lire_solde_db(etu_num):
     sql = "SELECT SUM(opr_montant) as total_bonus FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
     val = (etu_num,)
@@ -85,7 +82,7 @@ def lire_solde_db(etu_num):
 
 def recharger_carte(etu_num):
     # Lire le solde de la base de données
-    solde_db = lire_solde_db(etu_num)  # Implémentez cette fonction pour lire le solde de la base de données
+    solde_db = lire_solde_db(etu_num)  
 
     # Convertir le solde en format approprié pour la carte (par exemple, en bytes)
     solde_bytes = solde_db.to_bytes(2, byteorder='big')  # Supposons que le solde est un uint16_t
@@ -117,9 +114,9 @@ def main():
         elif choice == '3':
             transferer_bonus(etu_num)
         elif choice == '4':
-            consulter_credit(etu_num)
+            consulter_credit()
         elif choice == '5':
-            recharger_credit()
+            recharger_carte(etu_num)
         elif choice == '6':
             print("Merci d'avoir utilisé le logiciel Berlicum. À bientôt !")
             break
@@ -128,3 +125,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
