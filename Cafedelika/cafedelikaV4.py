@@ -187,8 +187,6 @@ def enregistrer_transaction(montant, libelle, type_operation):
 #-----------------------------------------------------------------------------
 #------------------------------ PARTIE ECRIRE---------------------------------
 #-----------------------------------------------------------------------------
-
-# Fonction pour débiter la carte et enregistrer la transaction
 # Fonction pour débiter la carte et enregistrer la transaction
 def debiter_carte(montant, libelle, type_operation):
 
