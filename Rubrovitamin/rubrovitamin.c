@@ -211,7 +211,7 @@ void lire_birth(){
 
 void intro_num(){ // Fonction de personnalisation, données écrite dans l'EEPROM
     int i;
-    unsigned char data_num[MAX_PERSO];""
+    unsigned char data_num[MAX_PERSO];
     // vérification de la taille
     if (p3>MAX_PERSO){
         sw1=0x6c; // P3 incorrect
