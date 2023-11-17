@@ -174,9 +174,9 @@ def afficher_informations():
 	print_prenom()
 	print_birth()
 
-def consulter_bonus(etu_num):
+def consulter_bonus():
     sql = "SELECT * FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
-    val = (etu_num,)
+    val = (etu_num)
     cursor = cnx.cursor()
     cursor.execute(sql, val)
     rows = cursor.fetchall()
@@ -198,20 +198,25 @@ def transferer_bonus(etu_num):
         print("Aucun bonus à transférer.")
 
 def consulter_credit():
-    # Ici, nous devons construire et envoyer une commande APDU à la carte pour lire le solde
-    # L'instruction pour lire le solde est '0x01' dans la classe '0x82'
-    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]  # '0x02' est la longueur des données attendues (le solde est un uint16_t)
+    print("-------------------------MON SOLDE -------------------------")
+    # Définition d'une APDU pour obtenir le solde
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
 
     try:
-        # Envoi de la commande APDU à la carte et réception de la réponse
+        # Tentative de transmission de l'APDU à la carte à puce
         data, sw1, sw2 = conn_reader.transmit(apdu)
-        if sw1 == 0x90 and sw2 == 0x00:  # Vérification du statut de réponse
-            solde = int.from_bytes(data, byteorder='big')  # Convertir les données en nombre
-            print(f"Solde actuel sur la carte: {solde} centimes")
-        else:
-            print(f"Erreur lors de la lecture du solde de la carte: SW1 = {sw1}, SW2 = {sw2}")
-    except Exception as e:
-        print(f"Erreur lors de la communication avec la carte: {e}")
+    except scardexcp.CardConnectionException as e:
+        # Gestion des erreurs de connexion avec la carte
+        print("Erreur : ", e)
+
+    # Calcul du solde à partir des données reçues
+    solde = (int(data[0]) * 100 + int(data[1])) / 100.00 # Les données sont interprétées comme deux octets représentant le solde en centimes. 
+    # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
+
+    # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
+    print(""" 
+        Solde de la carte : %.2f €""" % (solde))
+    return
 
 def lire_solde_db(etu_num):
     sql = "SELECT SUM(opr_montant) as total_bonus FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
@@ -221,41 +226,31 @@ def lire_solde_db(etu_num):
     result = cursor.fetchone()
     return result[0] if result else 0
 
-def recharger_carte(etu_num):
+def recharger_carte():
     try:
-        # Demande à l'utilisateur d'entrer le montant de recharge
-        montant_recharge = int(input("Entrez le montant à recharger (en centimes) : "))
+        # Demander à l'utilisateur le montant à recharger (en euros)
+        montant_recharge_euros = float(input("Entrez le montant à recharger (en euros) : "))
+        montant_recharge_centimes = int(montant_recharge_euros * 100)  # Convertir en centimes
 
-        # Simuler la transaction de recharge
-        print("Connexion à la banque...")
-        print("Transaction en cours...")
-        print("Rechargement réussi !")
+        # Préparation de l'APDU pour recharger le crédit
+        apdu = [0x82, 0x02, 0x00, 0x00, 0x02, montant_recharge_centimes >> 8, montant_recharge_centimes & 0xFF]
 
-        # Lire le solde actuel de la carte
-        apdu_lire_solde = [0x82, 0x01, 0x00, 0x00, 0x02]  # '0x02' pour la longueur des données attendues
-        data, sw1, sw2 = conn_reader.transmit(apdu_lire_solde)
+        # Transmission de l'APDU à la carte
+        data, sw1, sw2 = conn_reader.transmit(apdu)
+        print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
+
         if sw1 == 0x90 and sw2 == 0x00:
-            solde_actuel = int.from_bytes(data, byteorder='big')
+            print(f"Succès !\nCrédit ajouté : {montant_recharge_euros} €")
         else:
-            print(f"Erreur lors de la lecture du solde de la carte: SW1 = {sw1}, SW2 = {sw2}")
-            return
-
-        # Calculer le nouveau solde
-        nouveau_solde = solde_actuel + montant_recharge
-
-        # Mettre à jour le solde sur la carte
-        nouveau_solde_bytes = nouveau_solde.to_bytes(2, byteorder='big')
-        apdu_maj_solde = [0x82, 0x02, 0x00, 0x00] + list(nouveau_solde_bytes)
-        sw1, sw2 = conn_reader.transmit(apdu_maj_solde)
-        if sw1 == 0x90 and sw2 == 0x00:
-            print(f"Solde de la carte mis à jour: {nouveau_solde} centimes")
-        else:
-            print(f"Erreur lors de la mise à jour du solde de la carte: SW1 = {sw1}, SW2 = {sw2}")
+            print(f"Erreur lors de la recharge du crédit: SW1 = {sw1}, SW2 = {sw2}")
 
     except ValueError:
         print("Veuillez entrer un montant valide.")
-    except Exception as e:
-        print(f"Erreur lors de la communication avec la carte: {e}")
+    except scardexcp.CardConnectionException as e:
+        print("Erreur de connexion avec la carte : ", e)
+    return
+
+
 
 def main():
     init_smart_card()
@@ -267,16 +262,16 @@ def main():
             afficher_informations()
             print("------------------------------------------------------------")
         elif choice == '2':
-            consulter_bonus(etu_num)
+            consulter_bonus()
             print("")
         elif choice == '3':
             transferer_bonus(etu_num)
             print("")
         elif choice == '4':
             consulter_credit()
-            print("")
+            print("------------------------------------------------------------")
         elif choice == '5':
-            recharger_carte(etu_num)
+            recharger_carte()
             print("")
             
         elif choice == '6':
