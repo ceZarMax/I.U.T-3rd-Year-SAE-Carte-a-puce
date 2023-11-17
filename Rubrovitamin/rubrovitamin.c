@@ -274,14 +274,15 @@ void LectureSolde(){
     sw1 = 0x90;  // Indique le succès en définissant sw1 à 0x90.
 }
 
-void credit(){ // Créditer la carte lors d'un rechargement
+void credit(){
+    uint16_t ajout;
     if(p3 != 2){
         sw1 = 0x6c ;
         sw2 = 2;
         return ;
     }
     sendbytet0(ins) ;
-    uint16_t ajout = ((uint16_t)recbytet0() << 8) + (uint16_t)recbytet0();
+    ajout = ((uint16_t)recbytet0() << 8) + (uint16_t)recbytet0();
     uint16_t solde_mot = eeprom_read_word(&solde) ;
     uint16_t montant = ajout + solde_mot ; // On ajoute le montant
     if(montant < ajout){ //il y a eu un debordement
@@ -293,13 +294,14 @@ void credit(){ // Créditer la carte lors d'un rechargement
 }
 
 void Depenser(){
+    uint16_t retrait;
     if(p3 != 2){
         sw1 = 0x6c ;
         sw2 = 2;
         return ;
     }
     sendbytet0(ins) ;
-    uint16_t retrait = ((uint16_t)recbytet0()<<8) + (uint16_t)recbytet0() ;
+    retrait = ((uint16_t)recbytet0()<<8) + (uint16_t)recbytet0() ;
     uint16_t solde_mot = eeprom_read_word(&solde) ;
     if(solde_mot < retrait){
         sw1 = 0x61 ; // solde insuffisant
@@ -309,6 +311,7 @@ void Depenser(){
     eeprom_write_word(&solde, montant) ;
     sw1 = 0x90 ;
 }
+
 
 void Reinit() {
 
