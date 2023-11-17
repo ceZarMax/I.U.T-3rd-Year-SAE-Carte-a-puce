@@ -134,26 +134,33 @@ def enregistrer_transaction(montant, libelle, type_operation):
         cursor = connection.cursor()
 
         # Récupérer l'identifiant de l'étudiant basé sur le nom et le prénom
-        select_etu_query = "SELECT etu_num FROM etudiant WHERE etu_nom = %s AND etu_prenom = %s"
+        select_etu_query = "SELECT etu_num, etu_solde FROM etudiant WHERE etu_nom = %s AND etu_prenom = %s"
         cursor.execute(select_etu_query, (nom, prenom))
         result = cursor.fetchone()
 
         if result:
-            etu_num = result[0]
-            
-            # Insérer la transaction dans la table "compte"
-            insert_query = "INSERT INTO compte (etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(insert_query, (etu_num, datetime.now(), montant, libelle, type_operation))
+            etu_num, etu_solde = result
+            # Vérifie si le solde de l'étudiant est supérieur ou égal au montant voulant être débité
+            if etu_solde >= montant:
+                # Insérer la transaction dans la table "compte"
+                insert_query = "INSERT INTO compte (etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES (%s, %s, %s, %s, %s)"
+                cursor.execute(insert_query, (etu_num, datetime.now(), montant, libelle, type_operation))
 
-            # Valider la transaction dans la base de données
-            connection.commit()
-            print("Transaction enregistrée dans la base de données.")
+                # Débiter le solde de l'étudiant
+                update_solde_query = "UPDATE etudiant SET etu_solde = etu_solde - %s WHERE etu_num = %s"
+                cursor.execute(update_solde_query, (montant, etu_num))
 
-            # Mettre à jour les statistiques de la boisson dans la table "boissons"
-            update_boisson_query = "UPDATE boissons SET nombres_ventes = nombres_ventes + 1, montant_total = montant_total + %s WHERE boisson_nom = %s"
-            cursor.execute(update_boisson_query, (montant, libelle))
-            connection.commit()
-            print("Statistiques de vente mises à jour.")
+                # Valider la transaction dans la base de données
+                connection.commit()
+                print("Solde et transaction enregistrés dans la base de données.")
+                
+                # Mettre à jour les statistiques de la boisson dans la table "boissons"
+                update_boisson_query = "UPDATE boissons SET nombres_ventes = nombres_ventes + 1, montant_total = montant_total + %s WHERE boisson_nom = %s"
+                cursor.execute(update_boisson_query, (montant, libelle))
+                connection.commit()
+                print("Statistiques de vente mises à jour.")
+            else:
+                print("Solde insuffisant pour effectuer la transaction.")
         else:
             print("Étudiant non trouvé dans la base de données.")
 
@@ -182,37 +189,92 @@ def enregistrer_transaction(montant, libelle, type_operation):
 #-----------------------------------------------------------------------------
 
 # Fonction pour débiter la carte et enregistrer la transaction
+# Fonction pour débiter la carte et enregistrer la transaction
 def debiter_carte(montant, libelle, type_operation):
 
-    apdu = [0x82, 0x03, 0x00, 0x00, 0x02, 0x00, int(montant * 100)]  # Convertir le montant en centimes
+    # Obtenez le solde actuel sur la carte
+    solde_carte = get_solde_carte()
 
+    # Définir une marge d'erreur acceptable pour la comparaison des nombres flottants
+    marge_erreur = 0.01  # Vous pouvez ajuster cette valeur en fonction de vos besoins
+
+    # Comparer le solde de la carte avec le montant enregistré dans la base de données
+    if abs(solde_carte - get_montant_base_de_donnees()) < marge_erreur:
+        apdu = [0x82, 0x03, 0x00, 0x00, 0x02, 0x00, int(montant * 100)]  # Convertir le montant en centimes
+        try:
+            data, sw1, sw2 = conn_reader.transmit(apdu)
+            if sw1 == 0x90:
+                # Appel de la fonction pour enregistrer la transaction dans la base de données
+                enregistrer_transaction(montant, libelle, type_operation)
+                
+                print(f"Préparation du {libelle} en cours...")
+                # Barre de chargement
+                for i in range(1, 11):
+                    print("\rChargement en cours : [{}{}] {}%".format("#" * i, " " * (10 - i), i * 10), end="")
+                    time.sleep(0.5)
+                print("""\n
+                     ______                                 _                                      _                _ 
+                    (____  \                               | |                      _         _   (_)              | |
+                     ____)  ) ___  ____  ____   ____     _ | | ____ ____ _   _  ___| |_  ____| |_  _  ___  ____    | |
+                    |  __  ( / _ \|  _ \|  _ \ / _  )   / || |/ _  ) _  | | | |/___)  _)/ _  |  _)| |/ _ \|  _ \   |_|
+                    | |__)  ) |_| | | | | | | ( (/ /   ( (_| ( (/ ( ( | | |_| |___ | |_( ( | | |__| | |_| | | | |   _ 
+                    |______/ \___/|_| |_|_| |_|\____)   \____|\____)_|| |\____(___/ \___)_||_|\___)_|\___/|_| |_|  |_|
+                                                                  (_____|                                             
+                    """)
+                print_solde()
+            else:
+                print(f"\nERREUR : pas assez d'argent sur la carte")
+                print(print_solde())
+        except scardexcp.CardConnectionException as e:
+            print("Erreur : ", e)
+    else:
+        print("ERREUR : Le montant sur la carte ne correspond pas au montant enregistré dans la base de données.")
+        print("Solde sur la carte : %.2f €" % solde_carte)
+        print("Montant enregistré dans la base de données : %.2f €" % get_montant_base_de_donnees())
+        print("Veuillez aller à la borne de recharge pour mettre à jour votre solde.")
+
+
+# Fonction pour obtenir le solde actuel sur la carte
+def get_solde_carte():
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
     try:
         data, sw1, sw2 = conn_reader.transmit(apdu)
-        if sw1 == 0x90:
-            # Appel de la fonction pour enregistrer la transaction dans la base de données
-            enregistrer_transaction(montant, libelle, type_operation)
-            
-            print(f"Préparation du {libelle} en cours...")
-            # Barre de chargement
-            for i in range(1, 11):
-                print("\rChargement en cours : [{}{}] {}%".format("#" * i, " " * (10 - i), i * 10), end="")
-                time.sleep(0.5)
-            print("""\n
-                 ______                                 _                                      _                _ 
-                (____  \                               | |                      _         _   (_)              | |
-                 ____)  ) ___  ____  ____   ____     _ | | ____ ____ _   _  ___| |_  ____| |_  _  ___  ____    | |
-                |  __  ( / _ \|  _ \|  _ \ / _  )   / || |/ _  ) _  | | | |/___)  _)/ _  |  _)| |/ _ \|  _ \   |_|
-                | |__)  ) |_| | | | | | | ( (/ /   ( (_| ( (/ ( ( | | |_| |___ | |_( ( | | |__| | |_| | | | |   _ 
-                |______/ \___/|_| |_|_| |_|\____)   \____|\____)_|| |\____(___/ \___)_||_|\___)_|\___/|_| |_|  |_|
-                                                              (_____|                                             
-                """)
-            print_solde()
-        else:
-            print(f"\nERREUR : pas assez d'argent sur la carte")
-            print(print_solde())
+        solde = (int(data[0]) * 100 + int(data[1])) / 100.00
+        return solde
     except scardexcp.CardConnectionException as e:
         print("Erreur : ", e)
-    
+
+# Fonction pour obtenir le montant enregistré dans la base de données
+def get_montant_base_de_donnees():
+    try:
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='root',
+            database='purpledragon'
+        )
+
+        cursor = connection.cursor()
+
+        # Récupérer le solde de l'étudiant
+        select_etu_query = "SELECT etu_solde FROM etudiant"
+        cursor.execute(select_etu_query)
+        result = cursor.fetchone()
+
+        if result:
+            montant_base_de_donnees, = result  # Déballer le tuple
+            return montant_base_de_donnees
+        else:
+            return None
+
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Erreur d'authentification à la base de données")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("La base de données spécifiée n'existe pas")
+        else:
+            print("Erreur inattendue :", err)
+
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -235,7 +297,7 @@ def print_hello_message():
   \_____\__,_|_| \___|\__,_|\___|_|_|_|\_\__,_|
                                                                                                  
 
- -- Version 3.00 --
+ -- Version 4.00 --
  -- "Un café... mais délicat"
  -- Auteur : Maxence -- \n \n""")
 
