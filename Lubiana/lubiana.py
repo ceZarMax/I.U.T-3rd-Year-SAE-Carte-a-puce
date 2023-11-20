@@ -291,22 +291,32 @@ def intro_etu():
 
 # Fonction pour ajouter du crédit initial (1€) à la carte
 def intro_credit():
-    # Définition d'une APDU pour ajouter du crédit initial (1€)
-    apdu = [0x82, 0x02, 0x00, 0x00, 0x02, 0x00, 0x64]
+    # APDU pour réinitialiser le solde à 0€
+    apdu_reset = [0x82, 0x04, 0x00, 0x00, 0x02]
+
+    # APDU pour ajouter du crédit de 1€
+    apdu_credit = [0x82, 0x02, 0x00, 0x00, 0x02, 0x00, 0x64]
 
     try:
-        data, sw1, sw2 = conn_reader.transmit(apdu)
+        # Réinitialisation du solde
+        data, sw1, sw2 = conn_reader.transmit(apdu_reset)
+        if sw1 != 0x90:
+            print(f"Erreur lors de la réinitialisation du solde : 0x{sw1:02X} 0x{sw2:02X}")
+            return
+
+        # Ajout du crédit
+        data, sw1, sw2 = conn_reader.transmit(apdu_credit)
         print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
         if sw1 == 0x90:
-            credit_hex = apdu[-1]  # Récupère la dernière valeur de l'APDU (0x64 dans cet exemple)
-            credit_decimal = int(credit_hex)/100.00  # Convertit la valeur hexadécimale en décimal
-
-            print(f"Succès !\nCrédit initial ajouté : {credit_decimal} €")
+            credit_hex = apdu_credit[-1]  # Dernière valeur de l'APDU (0x64)
+            credit_decimal = int(credit_hex) / 100.00  # Convertit en décimal
+            print(f"Succès ! Crédit initial ajouté : {credit_decimal} €")
         else:
-            print(f"Erreur : {sw1}")
+            print(f"Erreur lors de l'ajout du crédit : 0x{sw1:02X} 0x{sw2:02X}")
     except scardexcp.CardConnectionException as e:
         print("Erreur : ", e)
     return
+
 
 
 # Fonction pour réinitialiser le crédit de la carte
@@ -426,6 +436,5 @@ def main():
 
 if __name__ == '__main__':
 	main()
-
 
 
