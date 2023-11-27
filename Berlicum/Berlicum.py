@@ -2,6 +2,8 @@ import mysql.connector
 import smartcard.System as scardsys
 import smartcard.util as scardutil
 import smartcard.Exceptions as scardexcp
+from decimal import Decimal
+import datetime
 
 
 conn_reader = None
@@ -141,27 +143,21 @@ def print_etu():
 
 # Fonction pour imprimer le solde de la carte
 def print_solde():
-    # Définition d'une APDU pour obtenir le solde
-    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
+    # APDU pour obtenir le solde, avec une demande de 4 octets de données
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x04]
 
     try:
-        # Tentative de transmission de l'APDU à la carte à puce
+        # Transmission de l'APDU à la carte à puce
         data, sw1, sw2 = conn_reader.transmit(apdu)
-        # Affichage des codes SW1 et SW2 en cas de succès
-        print ("sw1 : 0x%02X | sw2 : 0x%02X" % (sw1, sw2))
+        solde = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+        solde_decimal = solde / 100.00  # Convertir en euros
+
+        # Affichage du solde
+        print(""" 
+            Solde de la carte : %.2f €""" % (solde_decimal))
     except scardexcp.CardConnectionException as e:
         # Gestion des erreurs de connexion avec la carte
         print("Erreur : ", e)
-
-    # Calcul du solde à partir des données reçues
-    solde = (int(data[0]) * 100 + int(data[1])) / 100.00 # Les données sont interprétées comme deux octets représentant le solde en centimes. 
-    # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
-
-    # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
-    print("""
-        sw1 : 0x%02X | 
-        sw2 : 0x%02X | 
-        Solde de la carte : %.2f €""" % (sw1, sw2, solde))
     return
 ###################################################################################################
 
@@ -174,48 +170,168 @@ def afficher_informations():
 	print_prenom()
 	print_birth()
 
+def lire_numero_etudiant():
+    apdu = [0x81, 0x08, 0x00, 0x00, 0x00]
+    try:
+        data, sw1, sw2 = conn_reader.transmit(apdu)
+
+        if sw1 == 0x6C:
+            apdu[-1] = sw2  # Mettre à jour P3 avec la taille correcte
+            data, sw1, sw2 = conn_reader.transmit(apdu)
+
+            if sw1 == 0x90:
+                num_etudiant_str = ''.join(chr(e) for e in data)
+                return num_etudiant_str
+            else:
+                # En cas d'erreur de lecture, renvoyer None
+                return None
+        else:
+            # En cas de réponse inattendue, renvoyer None
+            return None
+    except Exception as e:
+        # En cas d'erreur de communication, renvoyer None
+        return None
+
 def consulter_bonus():
-    sql = "SELECT * FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
-    val = (etu_num)
+    etu_num = lire_numero_etudiant()
+
+    if etu_num is None:
+        print("Impossible de lire le numéro d'étudiant à partir de la carte.")
+        return
+
+    sql = "SELECT * FROM compte WHERE etu_num = %s AND type_operation = 'Bonus';"
+    val = (etu_num,)
     cursor = cnx.cursor()
     cursor.execute(sql, val)
     rows = cursor.fetchall()
-    for row in rows:
-        print(row)
 
-def transferer_bonus(etu_num):
-    sql_select = "SELECT * FROM Compte WHERE etu_num = %s AND type_operation = 'Bonus';"
-    sql_update = "UPDATE compte SET type_operation = 'Bonus transféré' WHERE etu_num = %s AND type_operation = 'Bonus';"
-    val = (etu_num,)
-    cursor = cnx.cursor()
-    cursor.execute(sql_select, val)
-    bonuses = cursor.fetchall()
-    if bonuses:
-        cursor.execute(sql_update, val)
-        cnx.commit()
-        print("Bonus transférés avec succès.")
+    if rows:
+        total_bonus = sum(row[2] for row in rows)  # Somme des valeurs dans la colonne 'opr_montant'
+        print(f"Voici le montant de vos bonus : {total_bonus} €")
     else:
-        print("Aucun bonus à transférer.")
+        print("Aucun bonus trouvé pour l'étudiant numéro", etu_num)
 
-def consulter_credit():
-    print("-------------------------MON SOLDE -------------------------")
-    # Définition d'une APDU pour obtenir le solde
-    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
+def lire_solde_carte():
+    # APDU pour obtenir le solde, avec une demande de 4 octets de données
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x04]
 
     try:
         # Tentative de transmission de l'APDU à la carte à puce
         data, sw1, sw2 = conn_reader.transmit(apdu)
+        if sw1 != 0x90:
+            print("Erreur lors de la lecture du solde: SW1 = 0x{:02X}, SW2 = 0x{:02X}".format(sw1, sw2))
+            return None
+
+        # Calcul du solde à partir des données reçues
+        solde = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+        solde_decimal = solde / 100.00
+        return solde_decimal
+    except scardexcp.CardConnectionException as e:
+        print("Erreur de connexion avec la carte: ", e)
+        return None
+        
+def ecrire_solde_carte(montant):
+    # Convertir le montant en centimes
+    montant_centimes = int(Decimal(montant) * 100)
+
+    # Décomposition du montant en quatre octets
+    montant_bas = montant_centimes & 0xFF
+    montant_moyen_bas = (montant_centimes >> 8) & 0xFF
+    montant_moyen_haut = (montant_centimes >> 16) & 0xFF
+    montant_haut = (montant_centimes >> 24) & 0xFF
+
+    # APDU pour ajouter du crédit
+    apdu_credit = [0x82, 0x02, 0x00, 0x00, 0x04, montant_haut, montant_moyen_haut, montant_moyen_bas, montant_bas]
+
+    try:
+        data, sw1, sw2 = conn_reader.transmit(apdu_credit)
+        return sw1 == 0x90
+    except Exception as e:
+        print("Erreur lors de la mise à jour du solde sur la carte : ", e)
+        return False
+
+def transferer_bonus():
+    # Création d'un curseur à partir de la connexion à la base de données
+    cursor = cnx.cursor()
+
+    etu_num = lire_numero_etudiant()
+
+    if etu_num is None:
+        print("Impossible de lire le numéro d'étudiant à partir de la carte.")
+        return
+
+    # Récupérer le total des bonus de la base de données
+    sql = "SELECT SUM(opr_montant) FROM compte WHERE etu_num = %s AND type_operation = 'Bonus';"
+    cursor.execute(sql, (etu_num,))
+    total_bonus_result = cursor.fetchone()
+    total_bonus = float(total_bonus_result[0]) if total_bonus_result else 0.0
+
+    print(f"Total des bonus disponibles : {total_bonus} €")
+
+    try:
+        montant_a_transferer = float(input("Entrez le montant du bonus à transférer : "))
+    except ValueError:
+        print("Veuillez entrer un nombre valide.")
+        return
+
+    if montant_a_transferer > total_bonus:
+        print("Montant trop élevé, pas assez de bonus.")
+        return
+    elif montant_a_transferer <= 0:
+        print("Veuillez entrer un montant positif.")
+        return
+
+    if not ecrire_solde_carte(montant_a_transferer):
+        print("Échec de la mise à jour du solde sur la carte.")
+        return
+
+    # Mettre à jour la base de données pour refléter le nouveau total des bonus
+    try:
+        # Mise à jour des bonus existants pour refléter le montant transféré
+        # Cette requête ne réduit que les bonus non nuls
+        update_sql = """
+        UPDATE compte 
+        SET opr_montant = CASE 
+            WHEN opr_montant >= %s THEN opr_montant - %s
+            ELSE 0
+        END 
+        WHERE etu_num = %s AND type_operation = 'Bonus' AND opr_montant > 0;
+        """
+        cursor.execute(update_sql, (montant_a_transferer, montant_a_transferer, etu_num))
+
+        # Insérer un enregistrement pour le bonus transféré
+        insert_sql = "INSERT INTO compte (etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES (%s, %s, %s, %s, 'Bonus transféré')"
+        opr_date = datetime.datetime.now()
+        cursor.execute(insert_sql, (etu_num, opr_date, -montant_a_transferer, 'Recharge par borne'))
+
+        # Mise à jour du solde dans la table 'etudiant'
+        sql_update_balance = "UPDATE etudiant SET etu_solde = etu_solde + %s WHERE etu_num = %s"
+        cursor.execute(sql_update_balance, (montant_a_transferer, etu_num))
+
+        cnx.commit()
+        print(f"Bonus de {montant_a_transferer} € transférés avec succès.")
+    except Exception as e:
+        print("Erreur lors de la mise à jour de la base de données: ", e)
+        cnx.rollback()
+
+
+def consulter_credit():
+    print("-------------------------MON SOLDE -------------------------")
+    # APDU pour obtenir le solde, avec une demande de 4 octets de données
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x04]
+
+    try:
+        # Transmission de l'APDU à la carte à puce
+        data, sw1, sw2 = conn_reader.transmit(apdu)
+        solde = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+        solde_decimal = solde / 100.00  # Convertir en euros
+
+        # Affichage du solde
+        print(""" 
+            Solde de la carte : %.2f €""" % (solde_decimal))
     except scardexcp.CardConnectionException as e:
         # Gestion des erreurs de connexion avec la carte
         print("Erreur : ", e)
-
-    # Calcul du solde à partir des données reçues
-    solde = (int(data[0]) * 100 + int(data[1])) / 100.00 # Les données sont interprétées comme deux octets représentant le solde en centimes. 
-    # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
-
-    # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
-    print(""" 
-        Solde de la carte : %.2f €""" % (solde))
     return
 
 def lire_solde_db(etu_num):
@@ -227,30 +343,61 @@ def lire_solde_db(etu_num):
     return result[0] if result else 0
 
 def recharger_carte():
+    etu_num = lire_numero_etudiant()
+    if etu_num is None:
+        print("Impossible de lire le numéro d'étudiant à partir de la carte.")
+        return
+
+    # Demande à l'utilisateur de saisir le montant à ajouter
+    montant = Decimal(input("Entrez le montant à ajouter (en euros, max 255) : "))
+
+    # Vérifie que le montant est dans les limites acceptables
+    if montant < 0 or montant > 255:
+        print("Le montant doit être compris entre 0 et 255 euros.")
+        return
+
+    # Convertit le montant en centimes
+    montant_centimes = int(montant * 100)
+    montant_haut = montant_centimes >> 24  # Partie haute du montant
+    montant_moyen_haut = (montant_centimes >> 16) & 0xFF
+    montant_moyen_bas = (montant_centimes >> 8) & 0xFF
+    montant_bas = montant_centimes & 0xFF
+
+    # APDU pour ajouter du crédit
+    apdu_credit = [0x82, 0x02, 0x00, 0x00, 0x04, montant_haut, montant_moyen_haut, montant_moyen_bas, montant_bas]
+
     try:
-        # Demander à l'utilisateur le montant à recharger (en euros)
-        montant_recharge_euros = float(input("Entrez le montant à recharger (en euros) : "))
-        montant_recharge_centimes = int(montant_recharge_euros * 100)  # Convertir en centimes
+        # Envoi de la commande APDU
+        data, sw1, sw2 = conn_reader.transmit(apdu_credit)
+        if sw1 == 0x90:
+            print(f"Succès ! Crédit de {montant} € ajouté.")
+            # Mettre à jour la base de données
+            opr_date = datetime.datetime.now()
 
-        # Préparation de l'APDU pour recharger le crédit
-        apdu = [0x82, 0x02, 0x00, 0x00, 0x02, montant_recharge_centimes >> 8, montant_recharge_centimes & 0xFF]
+            # Récupérer le solde actuel
+            cursor = cnx.cursor()
+            sql = "SELECT etu_solde FROM etudiant WHERE etu_num = %s"
+            cursor.execute(sql, (etu_num,))
+            current_balance = Decimal(cursor.fetchone()[0])
 
-        # Transmission de l'APDU à la carte
-        data, sw1, sw2 = conn_reader.transmit(apdu)
-        print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
+            # Mettre à jour le solde dans la table 'etudiant'
+            new_balance = current_balance + montant
+            sql_update_balance = "UPDATE etudiant SET etu_solde = %s WHERE etu_num = %s"
+            cursor.execute(sql_update_balance, (float(new_balance), etu_num))
 
-        if sw1 == 0x90 and sw2 == 0x00:
-            print(f"Succès !\nCrédit ajouté : {montant_recharge_euros} €")
+            # Enregistrer l'opération de recharge dans la table 'compte'
+            sql_insert_operation = "INSERT INTO compte (etu_num, opr_date, opr_montant, opr_libelle, type_operation) VALUES (%s, %s, %s, %s, %s)"
+            cursor.execute(sql_insert_operation, (etu_num, opr_date, float(montant), 'Rechargement par carte', 'Recharge'))
+
+            # Valider les modifications
+            cnx.commit()
+
         else:
-            print(f"Erreur lors de la recharge du crédit: SW1 = {sw1}, SW2 = {sw2}")
-
-    except ValueError:
-        print("Veuillez entrer un montant valide.")
+            print(f"Erreur lors de l'ajout du crédit : 0x{sw1:02X} 0x{sw2:02X}")
     except scardexcp.CardConnectionException as e:
-        print("Erreur de connexion avec la carte : ", e)
+        print("Erreur : ", e)
+
     return
-
-
 
 def main():
     init_smart_card()
@@ -265,7 +412,7 @@ def main():
             consulter_bonus()
             print("")
         elif choice == '3':
-            transferer_bonus(etu_num)
+            transferer_bonus()
             print("")
         elif choice == '4':
             consulter_credit()
@@ -282,4 +429,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
