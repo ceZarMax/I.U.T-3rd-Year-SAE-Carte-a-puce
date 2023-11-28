@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodelika Web App</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header, footer {
+            background-color: #3498db;
+            color: #fff;
+            text-align: center;
+            padding: 1em 0;
+        }
+
+        main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        pre {
+            margin: 0;
+        }
+
+        a {
+            display: inline-block;
+            padding: 15px 30px; /* Increase padding to make the button bigger */
+            background-color: #3498db;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        a:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1> 
+            <pre>
+ ____   ___  ____  _____ _     ___ _  __    _    
+|  _ \ / _ \|  _ \| ____| |   |_ _| |/ /   / \   
+| |_) | | | | | | |  _| | |    | || ' /   / _ \  
+|  _ <| |_| | |_| | |___| |___ | || . \  / ___ \ 
+|_| \_\\___/|____/|_____|_____|___|_|\_\/_/   \_\
+            </pre>
+        </h1>
+    </header>
+
+    <main>
+        <p>Bienvenue sur RODELIKA, gestionnaire de la base de données liée à la carte.</p>
+        <a href="{{ url_for('main_menu') }}">Accéder au menu</a>
+    </main>
+
+    <footer>
+        <pre>
+        Rodelika Web App - ARVIN-BEROD, EL BEKI, GIRAULT, HUBERT
+        </pre>
+    </footer>
+
+    <!-- Add any necessary scripts or other dependencies at the end of the body -->
+
+</body>
+</html>
+

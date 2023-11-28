@@ -79,23 +79,21 @@ def init_smart_card():
 
 # Fonction pour imprimer le solde de la carte
 def print_solde():
-    # Définition d'une APDU pour obtenir le solde
-    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
+    # APDU pour obtenir le solde, avec une demande de 4 octets de données
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x04]
 
     try:
-        # Tentative de transmission de l'APDU à la carte à puce
+        # Transmission de l'APDU à la carte à puce
         data, sw1, sw2 = conn_reader.transmit(apdu)
+        solde = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+        solde_decimal = solde / 100.00  # Convertir en euros
+
+        # Affichage du solde
+        print("""\n
+            Solde de la carte : %.2f €""" % (solde_decimal))
     except scardexcp.CardConnectionException as e:
         # Gestion des erreurs de connexion avec la carte
         print("Erreur : ", e)
-
-    # Calcul du solde à partir des données reçues
-    solde = (int(data[0]) * 100 + int(data[1])) / 100.00 # Les données sont interprétées comme deux octets représentant le solde en centimes. 
-    # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
-
-    # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
-    print("""\n
-        Solde de la carte : %.2f €""" % (solde))
 
 def print_nom():
     apdu = [0x81, 0x02, 0x00, 0x00, 0x00]  # Instruction à transmettre à la carte
@@ -112,6 +110,29 @@ def print_prenom():
     data, sw1, sw2 = conn_reader.transmit(apdu)
     prenom = "".join(chr(e) for e in data)
     return prenom
+    
+def lire_numero_etudiant():
+    apdu = [0x81, 0x08, 0x00, 0x00, 0x00]
+    try:
+        data, sw1, sw2 = conn_reader.transmit(apdu)
+
+        if sw1 == 0x6C:
+            apdu[-1] = sw2  # Mettre à jour P3 avec la taille correcte
+            data, sw1, sw2 = conn_reader.transmit(apdu)
+
+            if sw1 == 0x90:
+                num_etudiant_str = ''.join(chr(e) for e in data)
+                return num_etudiant_str
+            else:
+                # En cas d'erreur de lecture, renvoyer None
+                return None
+        else:
+            # En cas de réponse inattendue, renvoyer None
+            return None
+    except Exception as e:
+        # En cas d'erreur de communication, renvoyer None
+        return None
+
 
 
 #-----------------------------------------------------------------------------
@@ -198,12 +219,20 @@ def debiter_carte(montant, libelle, type_operation):
 
     # Comparer le solde de la carte avec le montant enregistré dans la base de données
     if abs(solde_carte - get_montant_base_de_donnees()) < marge_erreur:
-        apdu = [0x82, 0x03, 0x00, 0x00, 0x02, 0x00, int(montant * 100)]  # Convertir le montant en centimes
+        # Convertir le montant en centimes et le séparer en 4 octets
+        montant_centimes = int(montant * 100)
+        byte1 = (montant_centimes >> 24) & 0xFF
+        byte2 = (montant_centimes >> 16) & 0xFF
+        byte3 = (montant_centimes >> 8) & 0xFF
+        byte4 = montant_centimes & 0xFF
+
+        apdu = [0x82, 0x03, 0x00, 0x00, 0x04, byte1, byte2, byte3, byte4]
         try:
             data, sw1, sw2 = conn_reader.transmit(apdu)
             if sw1 == 0x90:
                 # Appel de la fonction pour enregistrer la transaction dans la base de données
                 enregistrer_transaction(montant, libelle, type_operation)
+                
                 
                 print(f"Préparation du {libelle} en cours...")
                 # Barre de chargement
@@ -234,16 +263,22 @@ def debiter_carte(montant, libelle, type_operation):
 
 # Fonction pour obtenir le solde actuel sur la carte
 def get_solde_carte():
-    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x04]
     try:
         data, sw1, sw2 = conn_reader.transmit(apdu)
-        solde = (int(data[0]) * 100 + int(data[1])) / 100.00
-        return solde
+        solde = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+        return solde / 100.00
     except scardexcp.CardConnectionException as e:
         print("Erreur : ", e)
 
 # Fonction pour obtenir le montant enregistré dans la base de données
 def get_montant_base_de_donnees():
+    etu_num = lire_numero_etudiant()
+
+    if etu_num is None:
+        print("Impossible de lire l'identifiant de l'étudiant.")
+        return None
+
     try:
         connection = mysql.connector.connect(
             host='localhost',
@@ -254,24 +289,20 @@ def get_montant_base_de_donnees():
 
         cursor = connection.cursor()
 
-        # Récupérer le solde de l'étudiant
-        select_etu_query = "SELECT etu_solde FROM etudiant"
-        cursor.execute(select_etu_query)
+        # Récupérer le solde de l'étudiant spécifique
+        select_etu_query = "SELECT etu_solde FROM etudiant WHERE etu_num = %s"
+        cursor.execute(select_etu_query, (etu_num,))
         result = cursor.fetchone()
 
         if result:
-            montant_base_de_donnees, = result  # Déballer le tuple
+            montant_base_de_donnees, = result
             return montant_base_de_donnees
         else:
+            print("Étudiant non trouvé dans la base de données.")
             return None
 
     except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Erreur d'authentification à la base de données")
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("La base de données spécifiée n'existe pas")
-        else:
-            print("Erreur inattendue :", err)
+        handle_database_error(err)
 
 
 #-----------------------------------------------------------------------------
