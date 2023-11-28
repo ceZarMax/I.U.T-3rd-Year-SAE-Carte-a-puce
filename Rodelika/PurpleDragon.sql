@@ -5,13 +5,14 @@ CREATE TABLE etudiant(
 etu_num INT AUTO_INCREMENT,
 etu_nom VARCHAR(255),
 etu_prenom VARCHAR(255),
+etu_solde DECIMAL(15,2) NULL DEFAULT '0.00',
 PRIMARY KEY(etu_num)
 );
-INSERT INTO etudiant (etu_num, etu_nom, etu_prenom) VALUES
-(1, 'Arvin-Berod', 'Maxence'),
-(2, 'Hubert', 'Quentin'),
-(3, 'El Beki', 'Sohayb'),
-(4, 'Girault', 'Adrien');
+INSERT INTO etudiant (etu_num, etu_nom, etu_prenom, etu_solde) VALUES
+(1, 'Arvin-Berod', 'Maxence', 1.00),
+(2, 'Hubert', 'Quentin', 1.00),
+(3, 'El Beki', 'Sohayb', 1.00),
+(4, 'Girault', 'Adrien', 1.00);
 CREATE TABLE type(
 type_operation VARCHAR(255),
 PRIMARY KEY(type_operation)
