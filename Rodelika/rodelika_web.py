@@ -17,12 +17,16 @@ def get_list_student():
     return students
 		
 def get_list_student_with_sold():
-	sql="""select etudiant.*, sum(compte.opr_montant) as sold from etudiant,compte where etudiant.etu_num = compte.etu_num group by compte.etu_num"""
+	formatted_list = []
+	sql = "SELECT etudiant.etu_num, etudiant.etu_nom, etudiant.etu_prenom, SUM(compte.opr_montant) as sold FROM etudiant JOIN compte ON etudiant.etu_num = compte.etu_num GROUP BY etudiant.etu_num, etudiant.etu_nom, etudiant.etu_prenom"
 	cursor = cnx.cursor()
 	cursor.execute(sql)
 	rows = cursor.fetchall()
-	return rows
-		
+	for result in rows:
+		formatted_result = ' '.join(map(str, result))
+		formatted_list.append(formatted_result)
+	return formatted_list
+    
 def new_student():
 	if request.method == 'POST':
 		nom = request.form['nom']
