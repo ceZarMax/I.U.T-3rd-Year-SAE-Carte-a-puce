@@ -42,6 +42,9 @@ def new_student():
 		date = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
 		bonus_values = (student_id, date, 1.00, "Initialisation", "Bonus")
 		cursor.execute(insert_bonus_query, bonus_values)
+		update_etudiant_query = "UPDATE etudiant SET etu_solde = etu_solde + %s WHERE etu_num = %s"
+		update_values = (1.00, student_id)
+		cursor.execute(update_etudiant_query, update_values)
 		cnx.commit()
 		cursor.close()
 		return redirect(url_for('success_student'))
@@ -58,6 +61,9 @@ def add_bonus():
 		bonus_values = (num, date, 1.00, com, "Bonus")
 		cursor = cnx.cursor()
 		cursor.execute(insert_bonus_query, bonus_values)
+		update_etudiant_query = "UPDATE etudiant SET etu_solde = etu_solde + %s WHERE etu_num = %s"
+		update_values = (1.00, num)
+		cursor.execute(update_etudiant_query, update_values)
 		cnx.commit()
 		cursor.close()
 		return redirect(url_for('success_bonus'))
