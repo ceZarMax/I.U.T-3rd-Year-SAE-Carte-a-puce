@@ -1,5 +1,3 @@
-
-
 # ---------------------------------------------------------
 
 # Importation des librairies 
@@ -162,28 +160,28 @@ def print_etu():
 
 # Fonction pour imprimer le solde de la carte
 def print_solde():
-    # Définition d'une APDU pour obtenir le solde
-    apdu = [0x82, 0x01, 0x00, 0x00, 0x02]
+    # APDU pour obtenir le solde, avec une demande de 4 octets de données
+    apdu = [0x82, 0x01, 0x00, 0x00, 0x04]
 
     try:
-        # Tentative de transmission de l'APDU à la carte à puce
+        # Transmission de l'APDU à la carte à puce
         data, sw1, sw2 = conn_reader.transmit(apdu)
-        # Affichage des codes SW1 et SW2 en cas de succès
-        print ("sw1 : 0x%02X | sw2 : 0x%02X" % (sw1, sw2))
-    except scardexcp.CardConnectionException as e:
-        # Gestion des erreurs de connexion avec la carte
-        print("Erreur : ", e)
+        print("sw1 : 0x%02X | sw2 : 0x%02X" % (sw1, sw2))
 
-    # Calcul du solde à partir des données reçues
-    solde = (int(data[0]) * 100 + int(data[1])) / 100.00 # Les données sont interprétées comme deux octets représentant le solde en centimes. 
-    # Ils sont convertis en entiers, multipliés par 100 pour obtenir le montant en euros, puis divisés par 100.00 pour obtenir un nombre à virgule flottante.
+        # Calcul du solde à partir des données reçues
+        solde = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+        solde_decimal = solde / 100.00  # Convertir en euros
 
-    # Affichage des résultats, y compris les codes SW1 et SW2 et le solde
-    print("""
+        # Affichage du solde
+        print("""
         sw1 : 0x%02X | 
         sw2 : 0x%02X | 
-        Solde de la carte : %.2f €""" % (sw1, sw2, solde))
+        Solde de la carte : %.2f €""" % (sw1, sw2, solde_decimal))
+    except scardexcp.CardConnectionException as e:
+        print("Erreur : ", e)
+
     return
+
 
 
 #-----------------------------------------------------------------------------
@@ -291,29 +289,38 @@ def intro_etu():
 
 # Fonction pour ajouter du crédit initial (1€) à la carte
 def intro_credit():
-    # Définition d'une APDU pour ajouter du crédit initial (1€)
-    apdu = [0x82, 0x02, 0x00, 0x00, 0x02, 0x00, 0x64]
+    # APDU pour réinitialiser le solde à 0€
+    apdu_reset = [0x82, 0x04, 0x00, 0x00, 0x04]
+
+    # APDU pour ajouter du crédit de 1€ (100 centimes)
+    # Converti en quatre octets
+    credit_value = 100  # 1€ en centimes
+    apdu_credit = [0x82, 0x02, 0x00, 0x00, 0x04, 0x00, 0x00, (credit_value >> 8) & 0xFF, credit_value & 0xFF]
 
     try:
-        data, sw1, sw2 = conn_reader.transmit(apdu)
+        # Réinitialisation du solde
+        data, sw1, sw2 = conn_reader.transmit(apdu_reset)
+        if sw1 != 0x90:
+            print(f"Erreur lors de la réinitialisation du solde : 0x{sw1:02X} 0x{sw2:02X}")
+            return
+
+        # Ajout du crédit
+        data, sw1, sw2 = conn_reader.transmit(apdu_credit)
         print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
         if sw1 == 0x90:
-            credit_hex = apdu[-1]  # Récupère la dernière valeur de l'APDU (0x64 dans cet exemple)
-            credit_decimal = int(credit_hex)/100.00  # Convertit la valeur hexadécimale en décimal
-
-            print(f"Succès !\nCrédit initial ajouté : {credit_decimal} €")
+            print(f"Succès ! Crédit initial ajouté : 1.00 €")
         else:
-            print(f"Erreur : {sw1}")
+            print(f"Erreur lors de l'ajout du crédit : 0x{sw1:02X} 0x{sw2:02X}")
     except scardexcp.CardConnectionException as e:
         print("Erreur : ", e)
     return
 
 
+
+
 # Fonction pour réinitialiser le crédit de la carte
 def reinit_solde():
-    # Définition d'une APDU pour réinitialiser le solde de la carte
-    apdu = [0x82, 0x04, 0x00, 0x00, 0x02]
-
+    apdu = [0x82, 0x04, 0x00, 0x00, 0x04]  # Longueur de données ajustée à 4 octets
     try:
         data, sw1, sw2 = conn_reader.transmit(apdu)
         print(f"\nsw1 : 0x{sw1:02X} | sw2 : 0x{sw2:02X}")
@@ -426,6 +433,5 @@ def main():
 
 if __name__ == '__main__':
 	main()
-
 
 

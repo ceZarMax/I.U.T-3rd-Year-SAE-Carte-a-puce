@@ -211,7 +211,7 @@ void lire_birth(){
 
 void intro_num(){ // Fonction de personnalisation, données écrite dans l'EEPROM
     int i;
-    unsigned char data_num[MAX_PERSO];""
+    unsigned char data_num[MAX_PERSO];
     // vérification de la taille
     if (p3>MAX_PERSO){
         sw1=0x6c; // P3 incorrect
@@ -254,73 +254,84 @@ void lire_num(){
 // 
 //------------------------------------------------
 
-uint16_t solde EEMEM = 0;  // Définit une variable "solde" stockée en mémoire EEPROM, initialisée à 0.
+uint32_t solde EEMEM = 0;
 
 void LectureSolde(){
-    if(p3 != 2){
-        sw1 = 0x6c;   // Si la taille des données attendues (p3) n'est pas de 2 octets, renvoie une erreur 0x6C avec le code d'erreur 2.
-        sw2 = 2;
+    if(p3 != 4){
+        sw1 = 0x6c;
+        sw2 = 4;  // Attend 4 octets pour un uint32_t
         return;      
     }
-    sendbytet0(ins);  // Envoie un octet d'acquittement (ins) à la carte.
+    sendbytet0(ins);
 
-    // Lecture du solde depuis la mémoire EEPROM.
-    uint16_t mot = eeprom_read_word(&solde);  // Lecture d'un mot de 16 bits (2 octets) depuis la mémoire EEPROM.
+    uint32_t solde_val = eeprom_read_dword(&solde);
 
-    // Envoi des octets du solde en deux parties : poids fort (high byte) suivi du poids faible (low byte).
-    sendbytet0(mot >> 8);  // Envoie d'abord le bit de poids fort (8 bits de poids fort).
-    sendbytet0(mot);       // Puis envoie le bit de poids faible (8 bits de poids faible).
+    sendbytet0(solde_val >> 24);
+    sendbytet0(solde_val >> 16);
+    sendbytet0(solde_val >> 8);
+    sendbytet0(solde_val);
 
-    sw1 = 0x90;  // Indique le succès en définissant sw1 à 0x90.
+    sw1 = 0x90;
 }
 
-void credit(){ // Créditer la carte lors d'un rechargement
-    if(p3 != 2){
-        sw1 = 0x6c ;
-        sw2 = 2;
-        return ;
+void credit(){
+    uint32_t ajout;
+    if(p3 != 4){
+        sw1 = 0x6c;
+        sw2 = 4;
+        return;
     }
-    sendbytet0(ins) ;
-    uint16_t ajout = ((uint16_t)recbytet0() << 8) + (uint16_t)recbytet0();
-    uint16_t solde_mot = eeprom_read_word(&solde) ;
-    uint16_t montant = ajout + solde_mot ; // On ajoute le montant
-    if(montant < ajout){ //il y a eu un debordement
-        sw1 = 0x61 ;
-        return ;
+    sendbytet0(ins);
+
+    ajout = ((uint32_t)recbytet0() << 24) + ((uint32_t)recbytet0() << 16) + ((uint32_t)recbytet0() << 8) + (uint32_t)recbytet0();
+
+    uint32_t solde_actuel = eeprom_read_dword(&solde);
+    uint32_t nouveau_solde = solde_actuel + ajout;
+
+    if(nouveau_solde < solde_actuel){
+        sw1 = 0x61;
+        return;
     }
-    eeprom_write_word(&solde, montant) ;
-    sw1 = 0x90 ;
+
+    eeprom_write_dword(&solde, nouveau_solde);
+    sw1 = 0x90;
 }
 
 void Depenser(){
-    if(p3 != 2){
-        sw1 = 0x6c ;
-        sw2 = 2;
-        return ;
-    }
-    sendbytet0(ins) ;
-    uint16_t retrait = ((uint16_t)recbytet0()<<8) + (uint16_t)recbytet0() ;
-    uint16_t solde_mot = eeprom_read_word(&solde) ;
-    if(solde_mot < retrait){
-        sw1 = 0x61 ; // solde insuffisant
+    uint32_t retrait;
+    if(p3 != 4){
+        sw1 = 0x6c;
+        sw2 = 4;
         return;
     }
-    uint16_t montant = solde_mot - retrait ; // On débite le montant
-    eeprom_write_word(&solde, montant) ;
-    sw1 = 0x90 ;
+    sendbytet0(ins);
+
+    retrait = ((uint32_t)recbytet0() << 24) + ((uint32_t)recbytet0() << 16) + ((uint32_t)recbytet0() << 8) + (uint32_t)recbytet0();
+
+    uint32_t solde_actuel = eeprom_read_dword(&solde);
+
+    if(solde_actuel < retrait){ 
+        sw1 = 0x61;
+        return;
+    }
+
+    uint32_t nouveau_solde = solde_actuel - retrait;
+    eeprom_write_dword(&solde, nouveau_solde);
+    sw1 = 0x90;
 }
 
 void Reinit() {
-
-    if(p3 != 2){
-        sw1 = 0x6c ;
-        sw2 = 2;
-        return ;
+    if(p3 != 4){
+        sw1 = 0x6c;
+        sw2 = 4;
+        return;
     }
-    uint16_t solde_initial = 0; // Montant initial du solde (0 euros)
-    eeprom_write_word(&solde, solde_initial);
-    sw1 = 0x90; // Succès
+
+    uint32_t solde_initial = 0;
+    eeprom_write_dword(&solde, solde_initial);
+    sw1 = 0x90;
 }
+
 
 
 
