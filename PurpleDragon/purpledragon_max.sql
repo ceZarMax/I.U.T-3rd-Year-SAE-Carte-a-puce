@@ -83,7 +83,7 @@ CREATE TABLE `etudiant` (
   `etu_num` int(11) NOT NULL,
   `etu_nom` varchar(255) DEFAULT NULL,
   `etu_prenom` varchar(255) DEFAULT NULL,
-  `etu_solde` int(99) DEFAULT 0
+  `etu_solde` float(99) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
