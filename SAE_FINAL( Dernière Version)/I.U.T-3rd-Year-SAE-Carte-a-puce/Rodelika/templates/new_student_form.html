@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodelika Web App - New Student Form</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        h1 {
+            background-color: #3498db;
+            color: #fff;
+            text-align: center;
+            padding: 1em 0;
+        }
+
+        form {
+            width: 80%;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        label {
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        input {
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #3498db;
+            border-radius: 5px;
+        }
+
+        input[type="submit"] {
+            background-color: #3498db;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #2980b9;
+        }
+
+        footer {
+            background-color: #3498db;
+            color: #fff;
+            text-align: center;
+            padding: 1em 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Add New Student</h1>
+    <form method="post" action="{{ url_for('menu', option='3') }}">
+        <label for="nom">Nom:</label>
+        <input type="text" id="nom" name="nom" required>
+        <br>
+        <label for="prenom">Prénom:</label>
+        <input type="text" id="prenom" name="prenom" required>
+        <br>
+        <input type="submit" value="Submit">
+    </form>
+    <footer>
+        <pre>
+        Rodelika Web App - ARVIN-BEROD, EL BEKI, GIRAULT, HUBERT
+        </pre>
+    </footer>
+</body>
+</html>
+
