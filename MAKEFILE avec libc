@@ -1,0 +1,42 @@
+# Makefile for s_libc_project
+
+# Compiler and flags
+CC = gcc
+CFLAGS = -m32 -Iinclude -g
+LDFLAGS = -m32 -Llib
+LDLIBS = -ls_libc
+
+# Directories
+SRC_DIR = src
+INCLUDE_DIR = include
+LIB_DIR = lib
+BUILD_DIR = build
+TEST_DIR = test
+
+# Source files
+SRC_FILES = $(wildcard $(SRC_DIR)/*.s)
+OBJ_FILES = $(patsubst $(SRC_DIR)/%.s, $(BUILD_DIR)/%.o, $(SRC_FILES))
+
+# Test program
+TEST_PROG = $(TEST_DIR)/my_prog
+
+# Targets
+all: $(TEST_PROG)
+
+# Compile source files to object files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.s
+    $(CC) $(CFLAGS) -c $< -o $@
+
+# Link object files to create the shared library
+$(LIB_DIR)/libs_libc.so: $(OBJ_FILES)
+    $(CC) $(LDFLAGS) -shared $^ -o $@
+
+# Link the test program with the shared library
+$(TEST_PROG): $(TEST_DIR)/main.c $(LIB_DIR)/libs_libc.so
+    $(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
+
+# Clean rule
+clean:
+    rm -f $(BUILD_DIR)/*.o $(LIB_DIR)/*.so $(TEST_PROG)
+
+.PHONY: all clean
